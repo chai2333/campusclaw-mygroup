@@ -1,0 +1,10 @@
+.git
+.env
+.env.*
+.DS_Store
+*.sqlite3
+*.db
+uploads
+backups
+migration-data
+bin

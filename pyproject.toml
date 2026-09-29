@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "campusclaw"
+version = "0.1.0"
+description = "Class-scoped teaching material knowledge base"
+requires-python = ">=3.9"
+dependencies = [
+  "Flask>=3.0,<4",
+  "argon2-cffi>=23.1,<26",
+  "gunicorn>=22,<24",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8,<9",
+  "ruff>=0.6,<1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.setuptools.packages.find]
+include = ["campusclaw*"]
+
+[tool.setuptools.package-data]
+campusclaw = ["templates/*.html", "static/*.js", "schema.sql"]

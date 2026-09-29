@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}登录 · CampusClaw{% endblock %}
+{% block content %}
+  <h1>登录</h1>
+  <form id="login-form" method="post" action="/api/login">
+    <label>账号 <input name="username" autocomplete="username" required></label><br>
+    <label>密码 <input name="password" type="password" autocomplete="current-password" required></label><br>
+    <button type="submit">登录</button>
+  </form>
+{% endblock %}

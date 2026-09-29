@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}本班材料 · CampusClaw{% endblock %}
+{% block content %}
+  <h1>本班材料</h1>
+  <p>当前用户：{{ g.user['username'] }}（{{ g.user['role'] }}）</p>
+  {% if g.user['role'] == 'teacher' %}
+    <section id="teacher-upload">
+      <h2>上传材料</h2>
+      <form action="{{ url_for('materials.upload_material') }}" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".txt,.md" required>
+        <button type="submit">上传</button>
+      </form>
+    </section>
+  {% endif %}
+  {% if materials %}
+    <table>
+      <thead><tr><th>文件名</th><th>上传者</th><th>入库时间</th></tr></thead>
+      <tbody>
+        {% for material in materials %}
+          <tr data-material-id="{{ material['id'] }}">
+            <td>{{ material['original_filename'] }}</td>
+            <td>{{ material['uploader'] }}</td>
+            <td>{{ material['created_at'] }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p id="empty-state">本班暂无可用材料。</p>
+  {% endif %}
+{% endblock %}
