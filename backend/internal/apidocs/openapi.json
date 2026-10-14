@@ -1,0 +1,3068 @@
+{
+  "components": {
+    "schemas": {
+      "Agent": {
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "material_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "prompt": {
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "skill_ids": {
+            "items": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "version": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "prompt",
+          "enabled",
+          "version",
+          "skill_ids",
+          "material_ids"
+        ],
+        "type": "object"
+      },
+      "AgentInput": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "material_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "prompt": {
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "skill_ids": {
+            "items": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "enabled"
+        ],
+        "type": "object"
+      },
+      "Agents": {
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/Agent"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "agents"
+        ],
+        "type": "object"
+      },
+      "AskInput": {
+        "properties": {
+          "question": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "type": "object"
+      },
+      "AskResult": {
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "type": "array"
+          },
+          "hits": {
+            "items": {
+              "$ref": "#/components/schemas/Hit"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "answer",
+          "hits",
+          "citations"
+        ],
+        "type": "object"
+      },
+      "Citation": {
+        "properties": {
+          "char_end": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "char_start": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "chunk_id": {
+            "type": "integer"
+          },
+          "chunk_index": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "excerpt": {
+            "type": "string"
+          },
+          "material_id": {
+            "type": "string"
+          },
+          "material_title": {
+            "type": "string"
+          },
+          "ordinal": {
+            "maximum": 4,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "source_url": {
+            "description": "单次问答含此字段；会话引用使用 material_id 打开受保护材料",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ordinal",
+          "chunk_id",
+          "material_id",
+          "material_title",
+          "chunk_index",
+          "char_start",
+          "char_end",
+          "excerpt"
+        ],
+        "type": "object"
+      },
+      "ClassSkill": {
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "skill_key": {
+            "enum": [
+              "guided_problem_solving"
+            ],
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "updated_by": {
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "skill_key",
+          "enabled"
+        ],
+        "type": "object"
+      },
+      "ClassSkillInput": {
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "type": "object"
+      },
+      "Conversation": {
+        "properties": {
+          "agent_id": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "agent_name": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "created_at",
+          "updated_at",
+          "agent_id",
+          "agent_name"
+        ],
+        "type": "object"
+      },
+      "ConversationDetail": {
+        "properties": {
+          "conversation": {
+            "$ref": "#/components/schemas/Conversation"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "conversation",
+          "messages"
+        ],
+        "type": "object"
+      },
+      "ConversationInput": {
+        "additionalProperties": false,
+        "properties": {
+          "agent_id": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "agent_id"
+        ],
+        "type": "object"
+      },
+      "Conversations": {
+        "properties": {
+          "conversations": {
+            "items": {
+              "$ref": "#/components/schemas/Conversation"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "conversations"
+        ],
+        "type": "object"
+      },
+      "Error": {
+        "properties": {
+          "error": {
+            "description": "稳定错误代码，不含内部异常或秘密",
+            "type": "string"
+          },
+          "message": {
+            "description": "面向教师的可读校验信息",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "enum": [
+              "ok"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "Hit": {
+        "properties": {
+          "char_end": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "char_start": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "chunk_id": {
+            "type": "integer"
+          },
+          "chunk_index": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "excerpt": {
+            "type": "string"
+          },
+          "final_rank": {
+            "type": "integer"
+          },
+          "keyword_rank": {
+            "type": "integer"
+          },
+          "material_id": {
+            "type": "string"
+          },
+          "material_title": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "vector_rank": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "material_id",
+          "material_title",
+          "chunk_index",
+          "char_start",
+          "char_end",
+          "excerpt",
+          "source_url"
+        ],
+        "type": "object"
+      },
+      "LoginRequest": {
+        "properties": {
+          "password": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "username": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "type": "object"
+      },
+      "LoginResponse": {
+        "properties": {
+          "access_token": {
+            "description": "32 字节随机值的无填充 base64url 编码；非 JWT",
+            "type": "string"
+          },
+          "expires_in": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "token_type": {
+            "enum": [
+              "Bearer"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "token_type",
+          "expires_in"
+        ],
+        "type": "object"
+      },
+      "Material": {
+        "properties": {
+          "class_id": {
+            "type": "integer"
+          },
+          "content": {
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "index_status": {
+            "enum": [
+              "missing",
+              "pending",
+              "ready",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "original_filename": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "uploader": {
+            "type": "string"
+          },
+          "uploader_id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "class_id",
+          "title",
+          "content",
+          "index_status"
+        ],
+        "type": "object"
+      },
+      "Materials": {
+        "properties": {
+          "materials": {
+            "items": {
+              "$ref": "#/components/schemas/Material"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "materials"
+        ],
+        "type": "object"
+      },
+      "Message": {
+        "properties": {
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "type": "array"
+          },
+          "completed_at": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "error_code": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "type": "string"
+          },
+          "sequence_no": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "skill_name": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "streaming",
+              "completed",
+              "failed",
+              "cancelled"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sequence_no",
+          "role",
+          "content",
+          "status",
+          "created_at"
+        ],
+        "type": "object"
+      },
+      "Prompt": {
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "content": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "updated_by": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "version": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "configured"
+        ],
+        "type": "object"
+      },
+      "PromptInput": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "maxLength": 12000,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "type": "object"
+      },
+      "Question": {
+        "additionalProperties": false,
+        "properties": {
+          "agent_id": {
+            "description": "若携带此字段也不会改变会话智能体",
+            "type": "integer"
+          },
+          "text": {
+            "description": "首尾空白去除后按 Unicode 字符计数",
+            "maxLength": 500,
+            "minLength": 2,
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
+      "Ready": {
+        "properties": {
+          "status": {
+            "enum": [
+              "ready"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "ReindexInput": {
+        "properties": {
+          "collapse_whitespace": {
+            "type": "boolean"
+          },
+          "max_length": {
+            "type": "integer"
+          },
+          "overlap_percent": {
+            "type": "integer"
+          },
+          "remove_emails": {
+            "type": "boolean"
+          },
+          "remove_urls": {
+            "type": "boolean"
+          },
+          "separator": {
+            "type": "string"
+          },
+          "strategy": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "custom",
+              "hierarchy"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ReindexResult": {
+        "properties": {
+          "failed_chunks": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "index_status": {
+            "type": "string"
+          },
+          "ready_chunks": {
+            "type": "integer"
+          },
+          "strategy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "strategy",
+          "index_status",
+          "ready_chunks",
+          "failed_chunks"
+        ],
+        "type": "object"
+      },
+      "SearchInput": {
+        "properties": {
+          "limit": {
+            "default": 4,
+            "maximum": 20,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "mode": {
+            "default": "hybrid",
+            "enum": [
+              "keyword",
+              "vector",
+              "hybrid"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "SearchResult": {
+        "properties": {
+          "hits": {
+            "items": {
+              "$ref": "#/components/schemas/Hit"
+            },
+            "type": "array"
+          },
+          "mode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "hits"
+        ],
+        "type": "object"
+      },
+      "Skill": {
+        "properties": {
+          "description": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 32,
+            "minLength": 1,
+            "type": "string"
+          },
+          "source_text": {
+            "maxLength": 8000,
+            "type": "string"
+          },
+          "subject_text": {
+            "maxLength": 32,
+            "type": "string"
+          },
+          "tools": {
+            "items": {
+              "enum": [
+                "knowledge_search"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "trigger_text": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "trigger_text",
+          "subject_text",
+          "description",
+          "tools",
+          "source_text",
+          "enabled"
+        ],
+        "type": "object"
+      },
+      "SkillInput": {
+        "additionalProperties": false,
+        "properties": {
+          "source_text": {
+            "maxLength": 8000,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_text"
+        ],
+        "type": "object"
+      },
+      "Skills": {
+        "properties": {
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/Skill"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "skills"
+        ],
+        "type": "object"
+      },
+      "Status": {
+        "properties": {
+          "status": {
+            "enum": [
+              "ok"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "StreamDelta": {
+        "properties": {
+          "text": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
+      "StreamDone": {
+        "properties": {
+          "assistant_message_id": {
+            "type": "string"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "completed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "assistant_message_id",
+          "status",
+          "citations"
+        ],
+        "type": "object"
+      },
+      "StreamError": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "retryable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "retryable"
+        ],
+        "type": "object"
+      },
+      "StreamMeta": {
+        "properties": {
+          "assistant_message_id": {
+            "type": "string"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "type": "array"
+          },
+          "conversation_id": {
+            "type": "string"
+          },
+          "skill": {
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "ok"
+            ],
+            "type": "string"
+          },
+          "user_message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "skill",
+          "citations",
+          "conversation_id",
+          "user_message_id",
+          "assistant_message_id"
+        ],
+        "type": "object"
+      },
+      "UploadInput": {
+        "properties": {
+          "collapse_whitespace": {
+            "type": "string"
+          },
+          "file": {
+            "format": "binary",
+            "type": "string"
+          },
+          "max_length": {
+            "type": "string"
+          },
+          "overlap_percent": {
+            "type": "string"
+          },
+          "remove_emails": {
+            "type": "string"
+          },
+          "remove_urls": {
+            "type": "string"
+          },
+          "separator": {
+            "type": "string"
+          },
+          "strategy": {
+            "enum": [
+              "auto",
+              "custom",
+              "hierarchy"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "type": "object"
+      },
+      "UploadResult": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "index_status": {
+            "enum": [
+              "ready",
+              "pending",
+              "failed",
+              "unavailable"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ready"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "index_status"
+        ],
+        "type": "object"
+      },
+      "User": {
+        "properties": {
+          "class_id": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "role": {
+            "enum": [
+              "teacher",
+              "student"
+            ],
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "role",
+          "class_id"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "description": "先 POST /api/login，将 access_token 原文填入 Authorize，不添加 Bearer 前缀。不是 JWT。",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "教师提示词、解题引导技能、本班检索与学生流式会话。登录返回不透明 Bearer 会话令牌。",
+    "title": "CampusClaw 第5课 API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.3",
+  "paths": {
+    "/api/agents": {
+      "get": {
+        "description": "权限：class。 列出本班智能体（学生只见启用者）",
+        "operationId": "get__api_agents",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Agents"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "列出本班智能体（学生只见启用者）",
+        "tags": [
+          "agents"
+        ],
+        "x-role": "class"
+      },
+      "post": {
+        "description": "权限：teacher。 新建智能体并原子绑定本班技能和材料",
+        "operationId": "post__api_agents",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Agent"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "invalid_agent / duplicate_name / invalid_request_body"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "新建智能体并原子绑定本班技能和材料",
+        "tags": [
+          "agents"
+        ],
+        "x-role": "teacher"
+      }
+    },
+    "/api/agents/{id}": {
+      "get": {
+        "description": "权限：class。 读取本班智能体（学生不可读取停用者）",
+        "operationId": "get__api_agents_id",
+        "parameters": [
+          {
+            "description": "资源编号；越权与不存在同形404",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Agent"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "读取本班智能体（学生不可读取停用者）",
+        "tags": [
+          "agents"
+        ],
+        "x-role": "class"
+      },
+      "put": {
+        "description": "权限：teacher。 更新智能体、启停状态与两份绑定（下一轮生效）",
+        "operationId": "put__api_agents_id",
+        "parameters": [
+          {
+            "description": "资源编号；越权与不存在同形404",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Agent"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "invalid_agent / duplicate_name / invalid_request_body"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "更新智能体、启停状态与两份绑定（下一轮生效）",
+        "tags": [
+          "agents"
+        ],
+        "x-role": "teacher"
+      }
+    },
+    "/api/ask": {
+      "post": {
+        "description": "权限：class。 第四课单次知识库问答",
+        "operationId": "post__api_ask",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskResult"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "invalid_json / invalid_question"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "answer_unavailable / service_unavailable"
+          }
+        },
+        "summary": "第四课单次知识库问答",
+        "tags": [
+          "ask"
+        ],
+        "x-role": "class"
+      }
+    },
+    "/api/assistant/prompt": {
+      "get": {
+        "deprecated": true,
+        "description": "权限：teacher。 兼容旧班级提示词读取（新会话使用智能体）",
+        "operationId": "get__api_assistant_prompt",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Prompt"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "兼容旧班级提示词读取（新会话使用智能体）",
+        "tags": [
+          "assistant"
+        ],
+        "x-role": "teacher"
+      },
+      "put": {
+        "deprecated": true,
+        "description": "权限：teacher。 兼容旧提示词保存并同步默认智能体",
+        "operationId": "put__api_assistant_prompt",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromptInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Prompt"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "invalid_prompt / invalid_request_body"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "兼容旧提示词保存并同步默认智能体",
+        "tags": [
+          "assistant"
+        ],
+        "x-role": "teacher"
+      }
+    },
+    "/api/assistant/skills/guided-problem-solving": {
+      "get": {
+        "deprecated": true,
+        "description": "权限：teacher。 兼容旧班级技能开关读取",
+        "operationId": "get__api_assistant_skills_guided-problem-solving",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassSkill"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "兼容旧班级技能开关读取",
+        "tags": [
+          "assistant"
+        ],
+        "x-role": "teacher"
+      },
+      "put": {
+        "deprecated": true,
+        "description": "权限：teacher。 兼容旧开关更新默认智能体技能",
+        "operationId": "put__api_assistant_skills_guided-problem-solving",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassSkillInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassSkill"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "invalid_request_body"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "兼容旧开关更新默认智能体技能",
+        "tags": [
+          "assistant"
+        ],
+        "x-role": "teacher"
+      }
+    },
+    "/api/conversations": {
+      "get": {
+        "description": "权限：class。 列出本人本班会话",
+        "operationId": "get__api_conversations",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Conversations"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "列出本人本班会话",
+        "tags": [
+          "conversations"
+        ],
+        "x-role": "class"
+      },
+      "post": {
+        "description": "权限：class。 创建自己的会话并固定本班已启用智能体",
+        "operationId": "post__api_conversations",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Conversation"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "no_available_agents / invalid_request_body"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "创建自己的会话并固定本班已启用智能体",
+        "tags": [
+          "conversations"
+        ],
+        "x-role": "class"
+      }
+    },
+    "/api/conversations/{id}": {
+      "get": {
+        "description": "权限：class。 读取自己的会话、固定智能体和历史",
+        "operationId": "get__api_conversations_id",
+        "parameters": [
+          {
+            "description": "资源编号；越权与不存在同形404",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetail"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "conversation_not_found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "读取自己的会话、固定智能体和历史",
+        "tags": [
+          "conversations"
+        ],
+        "x-role": "class"
+      }
+    },
+    "/api/conversations/{id}/messages": {
+      "post": {
+        "description": "权限：class。 发送2–500字问题，检索后先meta再delta，落库后done",
+        "operationId": "post__api_conversations_id_messages",
+        "parameters": [
+          {
+            "description": "资源编号；越权与不存在同形404",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Question"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "example": "event: meta\ndata: {\"status\":\"ok\",\"skill\":null,\"citations\":[],\"conversation_id\":\"c\",\"user_message_id\":\"u\",\"assistant_message_id\":\"a\"}\n\nevent: delta\ndata: {\"text\":\"下一步提示\"}\n\nevent: done\ndata: {\"assistant_message_id\":\"a\",\"status\":\"completed\",\"citations\":[]}\n\n",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "meta → delta* → done/error；meta含候选引用和技能，done只在提交后发送。流开始前失败使用JSON状态码，之后使用error事件。"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "invalid_question / invalid_media_type / invalid_request_body"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "conversation_not_found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "conversation_busy"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "retrieval_unavailable / service_unavailable"
+          }
+        },
+        "summary": "发送2–500字问题，检索后先meta再delta，落库后done",
+        "tags": [
+          "conversations"
+        ],
+        "x-role": "class",
+        "x-sse-events": {
+          "delta": {
+            "$ref": "#/components/schemas/StreamDelta"
+          },
+          "done": {
+            "$ref": "#/components/schemas/StreamDone"
+          },
+          "error": {
+            "$ref": "#/components/schemas/StreamError"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/StreamMeta"
+          }
+        }
+      }
+    },
+    "/api/login": {
+      "post": {
+        "description": "权限：public。 登录并返回新的不透明Bearer会话令牌",
+        "operationId": "post__api_login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "invalid_login_request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "invalid_credentials"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "internal_error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "security": [],
+        "summary": "登录并返回新的不透明Bearer会话令牌",
+        "tags": [
+          "login"
+        ],
+        "x-role": "public"
+      }
+    },
+    "/api/logout": {
+      "post": {
+        "description": "权限：authenticated。 撤销当前令牌",
+        "operationId": "post__api_logout",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "撤销当前令牌",
+        "tags": [
+          "logout"
+        ],
+        "x-role": "authenticated"
+      }
+    },
+    "/api/materials": {
+      "get": {
+        "description": "权限：class。 本班材料列表",
+        "operationId": "get__api_materials",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Materials"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "本班材料列表",
+        "tags": [
+          "materials"
+        ],
+        "x-role": "class"
+      },
+      "post": {
+        "description": "权限：teacher。 上传本班UTF8文本资料",
+        "operationId": "post__api_materials",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResult"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "invalid_upload / unsupported_file / invalid_text / invalid_strategy"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "file_too_large"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "storage_failed / internal_error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "上传本班UTF8文本资料",
+        "tags": [
+          "materials"
+        ],
+        "x-role": "teacher"
+      }
+    },
+    "/api/materials/{id}": {
+      "get": {
+        "description": "权限：class。 读取本班材料",
+        "operationId": "get__api_materials_id",
+        "parameters": [
+          {
+            "description": "资源编号；越权与不存在同形404",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Material"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "读取本班材料",
+        "tags": [
+          "materials"
+        ],
+        "x-role": "class"
+      }
+    },
+    "/api/materials/{id}/file": {
+      "get": {
+        "description": "权限：class。 下载本班材料文件",
+        "operationId": "get__api_materials_id_file",
+        "parameters": [
+          {
+            "description": "资源编号；越权与不存在同形404",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "下载文件"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "下载本班材料文件",
+        "tags": [
+          "materials"
+        ],
+        "x-role": "class"
+      }
+    },
+    "/api/materials/{id}/reindex": {
+      "post": {
+        "description": "权限：teacher。 重建本班材料索引",
+        "operationId": "post__api_materials_id_reindex",
+        "parameters": [
+          {
+            "description": "资源编号；越权与不存在同形404",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReindexInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReindexResult"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "invalid_json / invalid_strategy"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "indexing_failed / service_unavailable"
+          }
+        },
+        "summary": "重建本班材料索引",
+        "tags": [
+          "materials"
+        ],
+        "x-role": "teacher"
+      }
+    },
+    "/api/me": {
+      "get": {
+        "description": "权限：authenticated。 当前身份",
+        "operationId": "get__api_me",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "当前身份",
+        "tags": [
+          "me"
+        ],
+        "x-role": "authenticated"
+      }
+    },
+    "/api/retrieval/search": {
+      "post": {
+        "description": "权限：class。 第四课本班检索",
+        "operationId": "post__api_retrieval_search",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResult"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "invalid_query / unsupported_mode / invalid_limit"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "retrieval_unavailable / service_unavailable"
+          }
+        },
+        "summary": "第四课本班检索",
+        "tags": [
+          "retrieval"
+        ],
+        "x-role": "class"
+      }
+    },
+    "/api/skills": {
+      "get": {
+        "description": "权限：class。 列出本班技能",
+        "operationId": "get__api_skills",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Skills"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "列出本班技能",
+        "tags": [
+          "skills"
+        ],
+        "x-role": "class"
+      },
+      "post": {
+        "description": "权限：teacher。 新建技能：JSON原文或UTF-8文件上传",
+        "operationId": "post__api_skills",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillInput"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Skill"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "invalid_skill / duplicate_name / invalid_request_body"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "新建技能：JSON原文或UTF-8文件上传",
+        "tags": [
+          "skills"
+        ],
+        "x-role": "teacher"
+      }
+    },
+    "/api/skills/{id}": {
+      "delete": {
+        "description": "权限：teacher。 删除本班技能并清理所有绑定",
+        "operationId": "delete__api_skills_id",
+        "parameters": [
+          {
+            "description": "资源编号；越权与不存在同形404",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "删除本班技能并清理所有绑定",
+        "tags": [
+          "skills"
+        ],
+        "x-role": "teacher"
+      },
+      "get": {
+        "description": "权限：class。 读取技能解析结果与原文",
+        "operationId": "get__api_skills_id",
+        "parameters": [
+          {
+            "description": "资源编号；越权与不存在同形404",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Skill"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "读取技能解析结果与原文",
+        "tags": [
+          "skills"
+        ],
+        "x-role": "class"
+      },
+      "put": {
+        "description": "权限：teacher。 更新技能原文（下一轮生效）",
+        "operationId": "put__api_skills_id",
+        "parameters": [
+          {
+            "description": "资源编号；越权与不存在同形404",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Skill"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "invalid_skill / duplicate_name / invalid_request_body"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "更新技能原文（下一轮生效）",
+        "tags": [
+          "skills"
+        ],
+        "x-role": "teacher"
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "权限：public。 存活检查",
+        "operationId": "get__health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            },
+            "description": "成功"
+          }
+        },
+        "security": [],
+        "summary": "存活检查",
+        "tags": [
+          "health"
+        ],
+        "x-role": "public"
+      }
+    },
+    "/ready": {
+      "get": {
+        "description": "权限：public。 本地依赖就绪检查",
+        "operationId": "get__ready",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ready"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_ready / vector_not_ready"
+          }
+        },
+        "security": [],
+        "summary": "本地依赖就绪检查",
+        "tags": [
+          "health"
+        ],
+        "x-role": "public"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "servers": [
+    {
+      "description": "当前站点同源接口",
+      "url": "/"
+    }
+  ]
+}

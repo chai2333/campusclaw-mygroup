@@ -21,7 +21,13 @@ import (
 	"campusclaw/internal/config"
 )
 
-const CookieName = "campus_session"
+const bearerScheme = "Bearer"
+
+type LoginResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int    `json:"expires_in"`
+}
 
 type User struct {
 	ID       int64  `json:"id"`
@@ -60,19 +66,31 @@ func (s *Service) key(id string) string {
 	_, _ = mac.Write([]byte(id))
 	return hex.EncodeToString(mac.Sum(nil))
 }
-func (s *Service) cookie(w http.ResponseWriter, id string, maxAge int) {
-	http.SetCookie(w, &http.Cookie{Name: CookieName, Value: id, Path: "/", HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: s.Config.Environment != "development" && s.Config.Environment != "test", MaxAge: maxAge})
+func bearerToken(r *http.Request) (string, bool) {
+	values := r.Header.Values("Authorization")
+	if len(values) != 1 {
+		return "", false
+	}
+	parts := strings.Fields(values[0])
+	if len(parts) != 2 || !strings.EqualFold(parts[0], bearerScheme) {
+		return "", false
+	}
+	if len(parts[1]) != 43 {
+		return "", false
+	}
+	decoded, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil || len(decoded) != 32 {
+		return "", false
+	}
+	return parts[1], true
 }
 func (s *Service) Load(r *http.Request) (*User, error) {
-	cookie, err := r.Cookie(CookieName)
-	if err != nil || len(cookie.Value) != 43 {
-		return nil, nil
-	}
-	if _, err := base64.RawURLEncoding.DecodeString(cookie.Value); err != nil {
+	token, ok := bearerToken(r)
+	if !ok {
 		return nil, nil
 	}
 	var u User
-	err = s.DB.QueryRowContext(r.Context(), `SELECT u.id,u.username,u.role,u.class_id FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.expires_at>?`, s.key(cookie.Value), time.Now().Unix()).Scan(&u.ID, &u.Username, &u.Role, &u.ClassID)
+	err := s.DB.QueryRowContext(r.Context(), `SELECT u.id,u.username,u.role,u.class_id FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.expires_at>?`, s.key(token), time.Now().Unix()).Scan(&u.ID, &u.Username, &u.Role, &u.ClassID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -92,6 +110,7 @@ func (s *Service) Require(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		if u == nil {
+			w.Header().Set("WWW-Authenticate", bearerScheme)
 			Error(w, 401, "authentication_required")
 			return
 		}
@@ -134,6 +153,15 @@ func (s *Service) IP(r *http.Request) string {
 	}
 	return ip.Unmap().String()
 }
+// @Route POST /api/login
+// @Summary 登录并返回新的不透明Bearer会话令牌
+// @Role public
+// @Request LoginRequest
+// @Response 200 LoginResponse
+// @Error 400 invalid_login_request
+// @Error 401 invalid_credentials
+// @Error 500 internal_error
+// @Error 503 service_unavailable
 func (s *Service) Login(w http.ResponseWriter, r *http.Request) {
 	contentType, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if contentType != "application/json" {
@@ -189,8 +217,8 @@ func (s *Service) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 	old := ""
-	if cookie, e := r.Cookie(CookieName); e == nil {
-		old = s.key(cookie.Value)
+	if token, ok := bearerToken(r); ok {
+		old = s.key(token)
 	}
 	if _, err = tx.ExecContext(r.Context(), "DELETE FROM sessions WHERE expires_at<=? OR id=?", now.Unix(), old); err != nil {
 		Error(w, 503, "service_unavailable")
@@ -216,10 +244,17 @@ func (s *Service) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.Limiter.Reset(key)
-	s.cookie(w, session, s.Config.SessionTTL)
-	JSON(w, 200, map[string]string{"status": "ok"})
+	JSON(w, 200, LoginResponse{AccessToken: session, TokenType: bearerScheme, ExpiresIn: s.Config.SessionTTL})
 }
+// @Route GET /api/me
+// @Summary 当前身份
+// @Role authenticated
+// @Response 200 User
 func (s *Service) Me(w http.ResponseWriter, r *http.Request) { JSON(w, 200, Current(r)) }
+// @Route POST /api/logout
+// @Summary 撤销当前令牌
+// @Role authenticated
+// @Response 200 Status
 func (s *Service) Logout(w http.ResponseWriter, r *http.Request) {
 	u, err := s.Load(r)
 	if err != nil {
@@ -227,15 +262,14 @@ func (s *Service) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if u == nil {
-		s.cookie(w, "", -1)
+		w.Header().Set("WWW-Authenticate", bearerScheme)
 		Error(w, 401, "authentication_required")
 		return
 	}
-	cookie, _ := r.Cookie(CookieName)
-	if _, err = s.DB.ExecContext(r.Context(), "DELETE FROM sessions WHERE id=?", s.key(cookie.Value)); err != nil {
+	token, _ := bearerToken(r)
+	if _, err = s.DB.ExecContext(r.Context(), "DELETE FROM sessions WHERE id=?", s.key(token)); err != nil {
 		Error(w, 503, "service_unavailable")
 		return
 	}
-	s.cookie(w, "", -1)
 	JSON(w, 200, map[string]string{"status": "ok"})
 }

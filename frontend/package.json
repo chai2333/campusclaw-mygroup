@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "typecheck": "tsc --noEmit",
+    "typecheck:test": "tsc -p tsconfig.test.json",
+    "test": "node --test src/sse.test.ts",
     "build": "tsc --noEmit && vite build"
   },
   "dependencies": {
@@ -15,6 +17,7 @@
     "remark-gfm": "4.0.1"
   },
   "devDependencies": {
+    "@types/node": "^24.19.0",
     "@types/react": "18.3.18",
     "@types/react-dom": "18.3.5",
     "typescript": "5.9.3",

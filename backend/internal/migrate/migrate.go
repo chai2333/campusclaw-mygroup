@@ -14,6 +14,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -234,20 +235,31 @@ func migrateChunks(ctx context.Context, src, dst *sql.DB, r *Report) error {
 		return fmt.Errorf("read chunks: %w", err)
 	}
 	defer rows.Close()
+	bodies := map[string]*strings.Builder{}
 	for rows.Next() {
 		var c Chunk
 		if err := rows.Scan(&c.MaterialID, &c.ClassID, &c.ChunkIndex, &c.Content); err != nil {
 			return err
 		}
-		_, err := dst.ExecContext(ctx,
-			"INSERT IGNORE INTO knowledge_entries(material_id,class_id,chunk_index,content) VALUES(?,?,?,?)",
-			c.MaterialID, c.ClassID, c.ChunkIndex, c.Content)
-		if err != nil {
-			return fmt.Errorf("insert chunk for %s: %w", c.MaterialID, err)
+		b, ok := bodies[c.MaterialID]
+		if !ok {
+			b = &strings.Builder{}
+			bodies[c.MaterialID] = b
 		}
+		b.WriteString(c.Content)
 		r.Chunks++
 	}
-	return rows.Err()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for materialID, b := range bodies {
+		if _, err := dst.ExecContext(ctx,
+			"INSERT IGNORE INTO knowledge_entries(material_id,class_id,body_text) SELECT ?, class_id, ? FROM materials WHERE id=?",
+			materialID, b.String(), materialID); err != nil {
+			return fmt.Errorf("insert body for %s: %w", materialID, err)
+		}
+	}
+	return nil
 }
 
 func copyUploads(ctx context.Context, src, dst *sql.DB, srcDir, dstDir string, r *Report) error {

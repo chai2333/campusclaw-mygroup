@@ -3,16 +3,19 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
   ApiError,
+  downloadMaterial,
   fetchMaterials,
-  materialFileUrl,
+  rebuildMaterial,
+  type ChunkOptions,
+  type ChunkStrategy,
   type Material,
   type Me,
 } from './api';
+import { AppHeader, type Theme } from './AppHeader';
 import { useToast } from './Toast';
 import { Upload } from './Upload';
 import type { Command } from './CommandPalette';
 
-type Theme = 'light' | 'dark';
 type ViewPref = 'list' | 'grid';
 type ErrorKind = 'forbidden' | 'not_found' | 'unavailable' | 'error' | 'network';
 
@@ -23,6 +26,7 @@ interface Props {
   onToggleTheme: () => void;
   onToggleView: () => void;
   onLogout: () => void;
+  onNavigate: (path: string) => void;
   onUnauthorized: () => void;
   setPaletteCommands: (cmds: Command[]) => void;
 }
@@ -54,6 +58,7 @@ export function Materials({
   onToggleTheme,
   onToggleView,
   onLogout,
+  onNavigate,
   onUnauthorized,
   setPaletteCommands,
 }: Props) {
@@ -64,6 +69,9 @@ export function Materials({
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Material | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [rebuildStrategy, setRebuildStrategy] = useState<ChunkStrategy>('auto');
+  const [rebuildOptions, setRebuildOptions] = useState<ChunkOptions>({ max_length: 800, overlap_percent: 10, separator: 'blank', remove_urls: false, remove_emails: false, collapse_whitespace: false });
+  const [rebuilding, setRebuilding] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Load the materials list, branching on error status per spec.
@@ -109,6 +117,52 @@ export function Materials({
   }, []);
 
   const closeDetail = useCallback(() => setSelected(null), []);
+
+  const handleRebuild = useCallback(async () => {
+    if (!selected || rebuilding) return;
+    setRebuilding(true);
+    try {
+      await rebuildMaterial(selected.id, rebuildStrategy, rebuildOptions);
+      toast.push('索引重建完成', 'success');
+      await load(search);
+      setSelected((current) => current ? { ...current, index_status: 'ready' } : current);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        onUnauthorized();
+        return;
+      }
+      toast.push(err instanceof ApiError && err.status === 400 ? '切分参数无效' : '索引重建失败', 'error');
+    } finally {
+      setRebuilding(false);
+    }
+  }, [selected, rebuilding, rebuildStrategy, rebuildOptions, toast, load, search, onUnauthorized]);
+
+  const handleDownload = useCallback(
+    async (material: Material) => {
+      try {
+        const blob = await downloadMaterial(material.id);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = material.original_filename || material.title;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          onUnauthorized();
+          return;
+        }
+        if (err instanceof ApiError && err.status === 404) {
+          toast.push('文件不存在或无权访问', 'error');
+          return;
+        }
+        toast.push('下载失败，请稍后重试', 'error');
+      }
+    },
+    [onUnauthorized, toast],
+  );
 
   // Close detail on Escape.
   useEffect(() => {
@@ -233,6 +287,9 @@ export function Materials({
                 {m.original_filename && (
                   <span>{m.original_filename}</span>
                 )}
+                <span className={`index-badge index-${m.index_status}`}>
+                  索引：{indexStatusLabel(m.index_status)}
+                </span>
               </span>
             </span>
           </button>
@@ -243,69 +300,45 @@ export function Materials({
 
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <div className="app-brand">
-          <span className="brand-mark" aria-hidden="true">C</span>
-          <span className="brand-name">CampusClaw</span>
-        </div>
-        <span className="header-user" title={me.username}>
-          <span>{me.username}</span>
-          <span className="role-tag">
-            {me.role === 'teacher' ? '教师' : '学生'}
-          </span>
-        </span>
-        <div className="header-actions">
-          {me.role === 'teacher' && (
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              onClick={() => setUploadOpen(true)}
-            >
-              <span className="btn-label">上传</span>
-            </button>
-          )}
-          <button
-            type="button"
-            className="btn btn-sm"
-            onClick={onToggleTheme}
-            aria-label={
-              theme === 'light' ? '切换到深色主题' : '切换到浅色主题'
-            }
-            title={theme === 'light' ? '深色主题' : '浅色主题'}
-          >
-            {theme === 'light' ? '🌙' : '☀'}
-          </button>
-          <div
-            className="view-toggle"
-            role="group"
-            aria-label="视图切换"
-          >
-            <button
-              type="button"
-              className={view === 'list' ? 'active' : ''}
-              onClick={() => view !== 'list' && onToggleView()}
-              aria-pressed={view === 'list'}
-            >
-              列表
-            </button>
-            <button
-              type="button"
-              className={view === 'grid' ? 'active' : ''}
-              onClick={() => view !== 'grid' && onToggleView()}
-              aria-pressed={view === 'grid'}
-            >
-              网格
-            </button>
-          </div>
-          <button
-            type="button"
-            className="btn btn-sm"
-            onClick={onLogout}
-          >
-            退出
-          </button>
-        </div>
-      </header>
+      <AppHeader
+        me={me}
+        theme={theme}
+        active="materials"
+        onToggleTheme={onToggleTheme}
+        onLogout={onLogout}
+        onNavigate={onNavigate}
+        actions={
+          <>
+            {me.role === 'teacher' && (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => setUploadOpen(true)}
+              >
+                <span className="btn-label">上传</span>
+              </button>
+            )}
+            <div className="view-toggle" role="group" aria-label="视图切换">
+              <button
+                type="button"
+                className={view === 'list' ? 'active' : ''}
+                onClick={() => view !== 'list' && onToggleView()}
+                aria-pressed={view === 'list'}
+              >
+                列表
+              </button>
+              <button
+                type="button"
+                className={view === 'grid' ? 'active' : ''}
+                onClick={() => view !== 'grid' && onToggleView()}
+                aria-pressed={view === 'grid'}
+              >
+                网格
+              </button>
+            </div>
+          </>
+        }
+      />
 
       <main className="app-main">
         <div className="materials-toolbar">
@@ -373,15 +406,40 @@ export function Materials({
                 )}
               </div>
               <MaterialContent material={selected} />
+              {me.role === 'teacher' && (
+                <div className="rebuild-panel">
+                  <h3>重建知识索引</h3>
+                  <label className="field">
+                    <span className="field-label">切分策略</span>
+                    <select value={rebuildStrategy} onChange={(e) => setRebuildStrategy(e.target.value as ChunkStrategy)} disabled={rebuilding}>
+                      <option value="auto">自动</option>
+                      <option value="custom">自定义</option>
+                      <option value="hierarchy">Markdown 层级</option>
+                    </select>
+                  </label>
+                  {rebuildStrategy === 'custom' && (
+                    <div className="chunk-options">
+                      <label className="field"><span className="field-label">最大长度</span><input type="number" min={100} max={2000} value={rebuildOptions.max_length} onChange={(e) => setRebuildOptions((o) => ({ ...o, max_length: Number(e.target.value) }))} /></label>
+                      <label className="field"><span className="field-label">重叠比例</span><input type="number" min={0} max={50} value={rebuildOptions.overlap_percent} onChange={(e) => setRebuildOptions((o) => ({ ...o, overlap_percent: Number(e.target.value) }))} /></label>
+                      <label className="field"><span className="field-label">分隔符</span><select value={rebuildOptions.separator} onChange={(e) => setRebuildOptions((o) => ({ ...o, separator: e.target.value as ChunkOptions['separator'] }))}><option value="blank">空行</option><option value="newline">换行</option><option value="period">句号</option></select></label>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="detail-footer">
-              <a
+              {me.role === 'teacher' && (
+                <button type="button" className="btn" onClick={handleRebuild} disabled={rebuilding}>
+                  {rebuilding ? '重建中…' : '重建索引'}
+                </button>
+              )}
+              <button
+                type="button"
                 className="btn btn-primary"
-                href={materialFileUrl(selected.id)}
-                download={selected.original_filename || undefined}
+                onClick={() => handleDownload(selected)}
               >
                 下载文件
-              </a>
+              </button>
               <button type="button" className="btn" onClick={closeDetail}>
                 关闭
               </button>
@@ -469,4 +527,11 @@ function formatDate(iso: string): string {
   if (Number.isNaN(d.getTime())) return iso;
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function indexStatusLabel(status: Material['index_status']): string {
+  if (status === 'ready') return '就绪';
+  if (status === 'failed') return '失败';
+  if (status === 'pending') return '处理中';
+  return '未建立';
 }

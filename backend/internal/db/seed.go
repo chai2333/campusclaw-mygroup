@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"campusclaw/internal/auth"
-	"campusclaw/internal/knowledge"
 )
 
 type seedClass struct {
@@ -88,18 +87,12 @@ func Seed(ctx context.Context, conn *sql.DB, teacherPassword, studentPassword, u
 	for _, m := range seedMaterials {
 		classID := classIDs[m.classSlug]
 		uploaderID := userIDs[m.uploader]
-		result, err := conn.ExecContext(ctx, "INSERT IGNORE INTO materials(id,class_id,uploader_id,title,original_filename,storage_key,status) VALUES(?,?,?,?,?,?,'ready')", m.id, classID, uploaderID, m.title, m.filename, m.id)
+		_, err := conn.ExecContext(ctx, "INSERT IGNORE INTO materials(id,class_id,uploader_id,title,original_filename,storage_key,status) VALUES(?,?,?,?,?,?,'ready')", m.id, classID, uploaderID, m.title, m.filename, m.id)
 		if err != nil {
 			return err
 		}
-		rows, _ := result.RowsAffected()
-		if rows == 0 {
-			continue
-		}
-		for i, chunk := range knowledge.Split(m.content, 2000) {
-			if _, err = conn.ExecContext(ctx, "INSERT INTO knowledge_entries(material_id,class_id,chunk_index,content) VALUES(?,?,?,?)", m.id, classID, i, chunk); err != nil {
-				return err
-			}
+		if err = ensureSeedBody(ctx, conn, m, classID); err != nil {
+			return err
 		}
 		path := filepath.Join(uploadDir, m.id)
 		if _, err = os.Stat(path); os.IsNotExist(err) {
@@ -111,5 +104,13 @@ func Seed(ctx context.Context, conn *sql.DB, teacherPassword, studentPassword, u
 			}
 		}
 	}
-	return nil
+	if err := seedSkillRows(ctx, conn); err != nil {
+		return err
+	}
+	return seedAgents(ctx, conn)
+}
+
+func ensureSeedBody(ctx context.Context, conn *sql.DB, m seedMaterial, classID int64) error {
+	_, err := conn.ExecContext(ctx, "INSERT IGNORE INTO knowledge_entries(material_id,class_id,body_text) VALUES(?,?,?)", m.id, classID, m.content)
+	return err
 }

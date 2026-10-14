@@ -7,11 +7,11 @@
 ## ADDED Requirements
 
 ### Requirement: 教师和学生可以登录
-系统 SHALL 接受 JSON `POST /api/login` 的 username/password，仅支持 teacher/student 角色，成功返回 200 并建立新服务端会话。
+系统 SHALL 接受 JSON `POST /api/login` 的 username/password，仅支持 teacher/student 角色，成功返回 200 并建立新服务端会话，同时返回 `access_token`、固定 `token_type=Bearer` 和正数 `expires_in`。
 
 #### Scenario: 教师登录
 - **WHEN** 预置教师提交有效 JSON 凭据
-- **THEN** 返回 200 与最小成功对象，并设置新的会话 Cookie。
+- **THEN** 返回 200 与新的不透明访问令牌、Bearer 类型和有效秒数，不设置认证 Cookie。
 
 #### Scenario: 学生登录
 - **WHEN** 预置学生提交有效 JSON 凭据
@@ -48,24 +48,24 @@
 - **WHEN** 不同账号/IP 组合发起请求且旧计数过期
 - **THEN** 组合独立计数，旧状态被清理，限流状态存储有容量边界。
 
-### Requirement: 会话生命周期与最小 Cookie
-系统 MUST 创建不可预测的高熵不透明 ID；服务端保存用户关联、创建及过期时间，不能复制角色或班级；Cookie MUST 为 HttpOnly、SameSite=Lax，非开发环境 Secure。
+### Requirement: Bearer 会话生命周期
+系统 MUST 创建不可预测的高熵不透明访问令牌，并只通过 `Authorization: Bearer <token>` 接受认证；服务端保存令牌摘要、用户关联、创建及过期时间，不能保存可复用原始令牌或复制角色与班级；Cookie MUST NOT 作为认证来源。
 
-#### Scenario: 会话随机且不含权限
-- **WHEN** 同一账号连续登录并检查 Cookie 与服务端会话记录
-- **THEN** ID 不同，Cookie 不含用户 ID/角色/班级/密码/密钥；会话仅关联用户与生命周期。
+#### Scenario: 令牌随机且不含权限
+- **WHEN** 同一账号连续登录并检查响应与服务端会话记录
+- **THEN** 访问令牌不同且不含用户 ID/角色/班级/密码/密钥；数据库不保存原始令牌，会话仅关联用户与生命周期。
 
 #### Scenario: 登录轮换
-- **WHEN** 携带旧会话的客户端成功登录
+- **WHEN** 携带旧 Bearer Token 的客户端成功登录
 - **THEN** 新 ID 生效，旧 ID 访问受保护 API 返回 401。
 
 #### Scenario: 会话过期
 - **WHEN** 过期 ID 调用 /api/me 或材料 API
 - **THEN** 返回 401 且不返回业务数据；过期记录可被清理。
 
-#### Scenario: 环境 Cookie 属性
-- **WHEN** 分别在本地 HTTP 开发环境与非开发环境登录
-- **THEN** 均包含 HttpOnly、SameSite=Lax；开发 Cookie 可在 HTTP 使用，非开发 Cookie 包含 Secure。
+#### Scenario: 非 Bearer 凭据无效
+- **WHEN** 客户端仅携带 Cookie、Basic、重复 Authorization 头或格式错误的 Bearer 值
+- **THEN** 系统返回 401，不查询或返回任何用户身份。
 
 ### Requirement: 客户端可以查询当前登录身份
 系统 SHALL 提供 GET /api/me，身份、角色和 class_id MUST 从会话关联的当前用户记录加载。
@@ -75,7 +75,7 @@
 - **THEN** 返回 200 与 id、username、role、class_id，不含密码、哈希或密钥。
 
 #### Scenario: 无效会话
-- **WHEN** 缺失、伪造、撤销或过期 Cookie 查询 /api/me
+- **WHEN** 缺失、伪造、撤销或过期 Bearer Token 查询 /api/me
 - **THEN** 返回 JSON 401，无身份或班级信息。
 
 #### Scenario: 权限即时更新
@@ -87,7 +87,7 @@
 - **THEN** 拒绝认证/授权，不授予任何教师能力。
 
 ### Requirement: 用户可以注销服务端会话
-系统 SHALL 提供 POST /api/logout，立即撤销会话并清 Cookie；无有效会话返回 401 并清 Cookie。
+系统 SHALL 提供 POST /api/logout，立即撤销当前 Bearer 会话；无有效令牌返回 401。
 
 #### Scenario: 注销并复用旧 ID
 - **WHEN** 有效会话注销后再次携带原 ID 查询身份或材料
@@ -95,7 +95,7 @@
 
 #### Scenario: 无有效会话注销
 - **WHEN** 未登录或过期客户端调用注销
-- **THEN** 返回 401 并清 Cookie，不创建新会话。
+- **THEN** 返回 401，不创建新会话。
 
 ### Requirement: 页面与 API 认证语义分离
 系统 MUST 将未登录受保护页面导航到 /login，受保护 API 返回 JSON 401；有效学生的教师操作返回 403。
@@ -109,7 +109,7 @@
 - **THEN** 返回 JSON 401，不含标题、正文或文件路径。
 
 #### Scenario: 学生伪造角色
-- **WHEN** 学生修改 query/Header/JSON/multipart/Cookie 中的角色后上传
+- **WHEN** 学生修改 query/Header/JSON/multipart 中的角色后上传
 - **THEN** 服务端仍返回 403，数据库和文件均不变。
 
 ### Requirement: 安全哈希与配置外置
@@ -159,7 +159,7 @@
 
 #### Scenario: 数据库故障
 - **WHEN** 数据库不可用但 HTTP 处理可用，持有会话请求依赖数据库的接口
-- **THEN** /health 返回 200，/ready 和该业务请求返回 503，不清 Cookie、不改报 401、不暴露内部错误。
+- **THEN** /health 返回 200，/ready 和该业务请求返回 503，不清客户端令牌、不改报 401、不暴露内部错误。
 
 #### Scenario: 上传目录故障
 - **WHEN** 上传目录不可用时请求 /ready

@@ -10,7 +10,7 @@
 
 - [x] 1.1 建立 Go net/http 后端分层与 React 18/TypeScript/Vite 前端骨架，锁定依赖和镜像版本；Verify: Go 构建与前端类型检查/生产构建均通过，目录符合 design Decision 1。
 - [x] 1.2 实现服务端环境变量读取与合法性检查，补全 .env.example；Verify: 缺少任一必需秘密或非法数值启动失败，示例包含全部变量且无真实值；种子密码不静默截断。
-- [x] 1.3 建立 Nginx 同源代理、SPA 路由及受保护页面认证检查；Verify: /api 错误保持 JSON 状态码，未登录 /materials 跳 /login，Vite/Compose 使用一致路径，/uploads 不走静态或 SPA fallback。
+- [x] 1.3 建立 Nginx 同源代理与 SPA 路由；Verify: SPA shell 不含业务数据，React 用 Bearer 调用 /api/me 决定未登录 /materials 跳 /login，/api 错误保持 JSON 状态码，Vite/Compose 使用一致路径，/uploads 不走静态或 SPA fallback。
 - [x] 1.4 更新 Git/镜像忽略规则与多阶段非 root 构建；Verify: 上下文与镜像不含 .env、上传、数据库或迁移备份，API/Web 以非 root 运行。
 
 ## 2. MySQL 模型与种子
@@ -24,18 +24,19 @@
 
 - [x] 3.1 提供停止写入后的 SQLite 一致性备份及文件校验清单流程；Verify: 测试备份可读，实体计数和文件校验和可核对，源卷保持只读且导出不含明文密码。
 - [x] 3.2 实现向新 MySQL/上传卷导入的幂等工具；Verify: 保留用户/班级/材料 ID、密码哈希、上传者、时间、正文顺序与文件；重复导入不复制，冲突中止。
-- [x] 3.3 处理异常记录与旧会话；Verify: 旧非 ready 记录留源备份及异常清单，ready 缺文件/归属冲突阻止切换；sessions 不迁移，旧 Cookie 返回 401。
+- [x] 3.3 处理异常记录与旧会话；Verify: 旧非 ready 记录留源备份及异常清单，ready 缺文件/归属冲突阻止切换；sessions 不迁移，旧凭据返回 401。
 - [x] 3.4 在隔离数据上演练切换前回滚；Verify: 失败后可恢复旧版本与原卷；记录新栈开始写入后不可直接回滚旧快照的边界，不使用 down -v。
 
 ## 4. 认证、会话与限流
 
-- [x] 4.1 实现高熵会话、存储侧 HMAC 查找键、过期判断及清理；Verify: Cookie 不透明且不同，数据库不保存原始可复用 ID，角色/class_id 不复制到会话。
+- [x] 4.1 实现高熵 Bearer 会话、存储侧 HMAC 查找键、过期判断及清理；Verify: access_token 不透明且不同，数据库不保存原始可复用 ID，角色/class_id 不复制到会话。
 - [x] 4.2 实现 POST /api/login 的 JSON 契约和登录轮换；Verify: 教师/学生成功 200；错误 401；非法 JSON/字段 400；旧会话在重新登录后立即失效。
 - [x] 4.3 实现 GET /api/me 并逐请求加载用户角色和班级；Verify: 角色/班级数据库更新下一请求生效；伪造声明无效，未知角色与失效用户被拒绝。
-- [x] 4.4 实现 POST /api/logout 与 Cookie 属性；Verify: 有效注销 200 并撤销，旧 ID 401；无会话注销 401 并清 Cookie；环境对应 HttpOnly/SameSite/Secure 属性正确。
+- [x] 4.4 实现 POST /api/logout 的 Bearer 撤销；Verify: 有效注销 200 并撤销，旧 Token 401；无效令牌注销 401，Cookie/Basic/畸形或重复 Authorization 均不能认证。
 - [x] 4.5 实现失败防枚举与用户名/IP 限流；Verify: 未知账号、错误密码、锁定同形 401；虚拟哈希比较执行；阈值、锁定正确密码、到期恢复、独立组合均通过测试。
 - [x] 4.6 实现可信代理 IP 与有界限流状态清理；Verify: 伪造转发头不能改变来源计数；并发安全，过期清理和容量边界测试通过。
-- [x] 4.7 实现认证缓存与数据库故障处理；Verify: 认证和材料响应 no-store，数据库故障为 503 不误判 401、不清 Cookie，无敏感日志。
+- [x] 4.7 实现认证缓存与数据库故障处理；Verify: 认证和材料响应 no-store，数据库故障为 503 不误判 401、不清客户端 Token，无敏感日志。
+- [x] 4.8 将 Web 全链路切换为 Authorization Bearer；Verify: 登录响应保存到 sessionStorage，fetch/XHR/下载均带 Authorization，刷新可恢复、401/注销清除，Nginx 仅公开无业务数据的 SPA shell。
 
 ## 5. 班级授权与材料读取
 
@@ -55,7 +56,7 @@
 
 ## 7. 完整前端
 
-- [x] 7.1 实现登录/材料页面、身份恢复及注销；Verify: 浏览器确认 JSON 登录、刷新/重开调用 /api/me，退出调用 /api/logout；旧传统表单路径不使用。
+- [x] 7.1 实现登录/材料页面、身份恢复及注销；Verify: 浏览器确认 JSON 登录、当前标签页刷新携带 Bearer 调用 /api/me，新标签页重新登录，退出调用 /api/logout 并清令牌；旧传统表单路径不使用。
 - [x] 7.2 实现身份驱动的上传入口和失败状态处理；Verify: 学生无上传入口；伪造 localStorage 无效；401 清内存回登录，403/404 正确提示，503 不误注销。
 - [x] 7.3 实现真实材料列表、详情和下载交互；Verify: 上传后同班可查，元数据/正文来自 API；空材料与无搜索结果状态可区分。
 - [x] 7.4 实现本班标题/正文搜索及列表/网格切换；Verify: 搜索和双视图集合一致，切换保持查询，刷新恢复视图偏好，跨班标题/正文不出现。

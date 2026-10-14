@@ -98,7 +98,7 @@
 
 #### Scenario: 登录刷新退出
 - **WHEN** 用户登录、刷新/重开材料页并退出
-- **THEN** 登录为 JSON /api/login；恢复调用 /api/me；退出调用 /api/logout，回到登录状态。
+- **THEN** 登录为 JSON /api/login 并在当前标签页保存 Bearer Token；刷新时用该令牌调用 /api/me；退出调用 /api/logout、清除令牌并回到登录状态。
 
 #### Scenario: 角色入口
 - **WHEN** 分别以教师和学生打开页面并修改 localStorage role

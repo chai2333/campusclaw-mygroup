@@ -27,11 +27,29 @@ services:
       LOGIN_WINDOW_SECONDS: ${LOGIN_WINDOW_SECONDS:-300}
       LOGIN_LOCK_SECONDS: ${LOGIN_LOCK_SECONDS:-300}
       TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
+      DIALOGUE_BASE_URL: ${DIALOGUE_BASE_URL:-}
+      DIALOGUE_MODEL: ${DIALOGUE_MODEL:-}
+      DIALOGUE_API_KEY: ${DIALOGUE_API_KEY:-}
+      DIALOGUE_TIMEOUT_SECONDS: ${DIALOGUE_TIMEOUT_SECONDS:-60}
+      DIALOGUE_MAX_OUTPUT_TOKENS: ${DIALOGUE_MAX_OUTPUT_TOKENS:-2048}
+      HISTORY_MAX_MESSAGES: ${HISTORY_MAX_MESSAGES:-12}
+      HISTORY_MAX_CHARACTERS: ${HISTORY_MAX_CHARACTERS:-24000}
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-}
+      EMBEDDING_TIMEOUT_SECONDS: ${EMBEDDING_TIMEOUT_SECONDS:-30}
+      QDRANT_BASE_URL: ${QDRANT_BASE_URL:-}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-campusclaw_chunks}
+      QDRANT_TIMEOUT_SECONDS: ${QDRANT_TIMEOUT_SECONDS:-10}
     volumes:
       - uploads:/data/uploads
     depends_on:
       db:
         condition: service_healthy
+      qdrant:
+        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/ready"]
       interval: 10s
@@ -57,6 +75,15 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  # Vector store for the optional embedding pipeline. Reachable only from the
+  # API over the compose network — no host ports are published.
+  qdrant:
+    image: qdrant/qdrant:v1.14.1
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
 volumes:
   uploads:
   mysql_data:
+  qdrant_data:

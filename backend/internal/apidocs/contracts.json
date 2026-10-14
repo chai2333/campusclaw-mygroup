@@ -1,0 +1,1040 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "CampusClaw 第5课 API",
+    "version": "1.0.0",
+    "description": "教师提示词、解题引导技能、本班检索与学生流式会话。登录返回不透明 Bearer 会话令牌。"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "当前站点同源接口"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "先 POST /api/login，将 access_token 原文填入 Authorize，不添加 Bearer 前缀。不是 JWT。"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "稳定错误代码，不含内部异常或秘密"
+          },
+          "message": {
+            "type": "string",
+            "description": "面向教师的可读校验信息"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ]
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "description": "32 字节随机值的无填充 base64url 编码；非 JWT"
+          },
+          "token_type": {
+            "type": "string",
+            "enum": [
+              "Bearer"
+            ]
+          },
+          "expires_in": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "access_token",
+          "token_type",
+          "expires_in"
+        ]
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "teacher",
+              "student"
+            ]
+          },
+          "class_id": {
+            "type": "integer",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "role",
+          "class_id"
+        ]
+      },
+      "Prompt": {
+        "type": "object",
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "content": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "updated_by": {
+            "type": "integer",
+            "nullable": true
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "configured"
+        ]
+      },
+      "PromptInput": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 12000
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "Skill": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "trigger_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "subject_text": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "knowledge_search"
+              ]
+            }
+          },
+          "source_text": {
+            "type": "string",
+            "maxLength": 8000
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "trigger_text",
+          "subject_text",
+          "description",
+          "tools",
+          "source_text",
+          "enabled"
+        ]
+      },
+      "SkillInput": {
+        "type": "object",
+        "properties": {
+          "source_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8000
+          }
+        },
+        "required": [
+          "source_text"
+        ],
+        "additionalProperties": false
+      },
+      "Material": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "class_id": {
+            "type": "integer"
+          },
+          "uploader_id": {
+            "type": "integer"
+          },
+          "uploader": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "original_filename": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "content": {
+            "type": "string"
+          },
+          "index_status": {
+            "type": "string",
+            "enum": [
+              "missing",
+              "pending",
+              "ready",
+              "failed"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "class_id",
+          "title",
+          "content",
+          "index_status"
+        ]
+      },
+      "Hit": {
+        "type": "object",
+        "properties": {
+          "chunk_id": {
+            "type": "integer"
+          },
+          "material_id": {
+            "type": "string"
+          },
+          "material_title": {
+            "type": "string"
+          },
+          "chunk_index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "char_start": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "char_end": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "excerpt": {
+            "type": "string"
+          },
+          "keyword_rank": {
+            "type": "integer"
+          },
+          "vector_rank": {
+            "type": "integer"
+          },
+          "final_rank": {
+            "type": "integer"
+          },
+          "score": {
+            "type": "number"
+          },
+          "source_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "material_id",
+          "material_title",
+          "chunk_index",
+          "char_start",
+          "char_end",
+          "excerpt",
+          "source_url"
+        ]
+      },
+      "Citation": {
+        "type": "object",
+        "properties": {
+          "chunk_id": {
+            "type": "integer"
+          },
+          "material_id": {
+            "type": "string"
+          },
+          "material_title": {
+            "type": "string"
+          },
+          "chunk_index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "char_start": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "char_end": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "excerpt": {
+            "type": "string"
+          },
+          "ordinal": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "source_url": {
+            "type": "string",
+            "description": "单次问答含此字段；会话引用使用 material_id 打开受保护材料"
+          }
+        },
+        "required": [
+          "ordinal",
+          "chunk_id",
+          "material_id",
+          "material_title",
+          "chunk_index",
+          "char_start",
+          "char_end",
+          "excerpt"
+        ]
+      },
+      "SearchInput": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "keyword",
+              "vector",
+              "hybrid"
+            ],
+            "default": "hybrid"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 4
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "SearchResult": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string"
+          },
+          "hits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Hit"
+            }
+          }
+        },
+        "required": [
+          "mode",
+          "hits"
+        ]
+      },
+      "AskInput": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "question"
+        ]
+      },
+      "AskResult": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "hits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Hit"
+            }
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            }
+          }
+        },
+        "required": [
+          "answer",
+          "hits",
+          "citations"
+        ]
+      },
+      "Conversation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "agent_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "agent_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "created_at",
+          "updated_at",
+          "agent_id",
+          "agent_name"
+        ]
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "sequence_no": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ]
+          },
+          "content": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "streaming",
+              "completed",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "error_code": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "completed_at": {
+            "type": "string"
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            }
+          },
+          "skill_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sequence_no",
+          "role",
+          "content",
+          "status",
+          "created_at"
+        ]
+      },
+      "Question": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 500,
+            "description": "首尾空白去除后按 Unicode 字符计数"
+          },
+          "agent_id": {
+            "type": "integer",
+            "description": "若携带此字段也不会改变会话智能体"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "ConversationDetail": {
+        "type": "object",
+        "properties": {
+          "conversation": {
+            "$ref": "#/components/schemas/Conversation"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            }
+          }
+        },
+        "required": [
+          "conversation",
+          "messages"
+        ]
+      },
+      "ReindexInput": {
+        "type": "object",
+        "properties": {
+          "strategy": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "custom",
+              "hierarchy"
+            ],
+            "default": "auto"
+          },
+          "max_length": {
+            "type": "integer"
+          },
+          "overlap_percent": {
+            "type": "integer"
+          },
+          "separator": {
+            "type": "string"
+          },
+          "remove_urls": {
+            "type": "boolean"
+          },
+          "remove_emails": {
+            "type": "boolean"
+          },
+          "collapse_whitespace": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ReindexResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "strategy": {
+            "type": "string"
+          },
+          "index_status": {
+            "type": "string"
+          },
+          "ready_chunks": {
+            "type": "integer"
+          },
+          "failed_chunks": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "strategy",
+          "index_status",
+          "ready_chunks",
+          "failed_chunks"
+        ]
+      },
+      "StreamDelta": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "StreamDone": {
+        "type": "object",
+        "properties": {
+          "assistant_message_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed"
+            ]
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            }
+          }
+        },
+        "required": [
+          "assistant_message_id",
+          "status",
+          "citations"
+        ]
+      },
+      "StreamError": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "retryable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "retryable"
+        ]
+      },
+      "UploadResult": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "index_status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready"
+            ]
+          },
+          "index_status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "pending",
+              "failed",
+              "unavailable"
+            ]
+          }
+        }
+      },
+      "AgentInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "prompt": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "skill_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "material_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "enabled"
+        ],
+        "additionalProperties": false
+      },
+      "Agent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "prompt": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "skill_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "material_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "prompt",
+          "enabled",
+          "version",
+          "skill_ids",
+          "material_ids"
+        ]
+      },
+      "Agents": {
+        "type": "object",
+        "properties": {
+          "agents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Agent"
+            }
+          }
+        },
+        "required": [
+          "agents"
+        ]
+      },
+      "Skills": {
+        "type": "object",
+        "properties": {
+          "skills": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Skill"
+            }
+          }
+        },
+        "required": [
+          "skills"
+        ]
+      },
+      "ClassSkill": {
+        "type": "object",
+        "properties": {
+          "skill_key": {
+            "type": "string",
+            "enum": [
+              "guided_problem_solving"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "updated_by": {
+            "type": "integer",
+            "nullable": true
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_key",
+          "enabled"
+        ]
+      },
+      "ClassSkillInput": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      },
+      "Conversations": {
+        "type": "object",
+        "properties": {
+          "conversations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Conversation"
+            }
+          }
+        },
+        "required": [
+          "conversations"
+        ]
+      },
+      "ConversationInput": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "agent_id"
+        ],
+        "additionalProperties": false
+      },
+      "StreamMeta": {
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "type": "string"
+          },
+          "user_message_id": {
+            "type": "string"
+          },
+          "assistant_message_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          },
+          "skill": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "skill",
+          "citations",
+          "conversation_id",
+          "user_message_id",
+          "assistant_message_id"
+        ]
+      },
+      "Status": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "Ready": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "Materials": {
+        "type": "object",
+        "properties": {
+          "materials": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Material"
+            }
+          }
+        },
+        "required": [
+          "materials"
+        ]
+      },
+      "UploadInput": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary"
+          },
+          "strategy": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "custom",
+              "hierarchy"
+            ]
+          },
+          "max_length": {
+            "type": "string"
+          },
+          "overlap_percent": {
+            "type": "string"
+          },
+          "separator": {
+            "type": "string"
+          },
+          "remove_urls": {
+            "type": "string"
+          },
+          "remove_emails": {
+            "type": "string"
+          },
+          "collapse_whitespace": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ]
+      }
+    }
+  }
+}

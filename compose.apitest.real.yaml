@@ -1,0 +1,12 @@
+# Optional overlay: configure real dialogue credentials in apitest/reports/.env.
+# Embeddings remain deterministic; retrieval still uses the isolated Qdrant.
+services:
+  api:
+    environment:
+      DIALOGUE_BASE_URL: ${DIALOGUE_BASE_URL:?set real dialogue URL in the local test .env}
+      DIALOGUE_MODEL: ${DIALOGUE_MODEL:?set real model in the local test .env}
+      DIALOGUE_API_KEY: ${DIALOGUE_API_KEY:?set real key in the local test .env}
+      DIALOGUE_TIMEOUT_SECONDS: 60
+  runner:
+    environment:
+      APITEST_PROVIDER: real

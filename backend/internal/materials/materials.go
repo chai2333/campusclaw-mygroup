@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -24,22 +25,28 @@ import (
 )
 
 type Material struct {
-	ID         string    `json:"id"`
-	ClassID    int64     `json:"class_id"`
-	UploaderID int64     `json:"uploader_id"`
-	Uploader   string    `json:"uploader"`
-	Title      string    `json:"title"`
-	Filename   string    `json:"original_filename"`
-	CreatedAt  time.Time `json:"created_at"`
-	Content    string    `json:"content"`
-	StorageKey string    `json:"-"`
-	Status     string    `json:"-"`
+	ID          string    `json:"id"`
+	ClassID     int64     `json:"class_id"`
+	UploaderID  int64     `json:"uploader_id"`
+	Uploader    string    `json:"uploader"`
+	Title       string    `json:"title"`
+	Filename    string    `json:"original_filename"`
+	CreatedAt   time.Time `json:"created_at"`
+	Content     string    `json:"content"`
+	IndexStatus string    `json:"index_status"`
+	StorageKey  string    `json:"-"`
+	Status      string    `json:"-"`
 }
 type Service struct {
 	DB       *sql.DB
 	Dir      string
 	MaxBytes int64
 	Clean    atomic.Bool
+	Indexer  MaterialIndexer
+}
+
+type MaterialIndexer interface {
+	IndexMaterial(ctx context.Context, materialID, strategy string, opts knowledge.Options) error
 }
 
 func RandomKey() (string, error) {
@@ -51,24 +58,26 @@ func SafeKey(key string) bool {
 	return key != "" && filepath.Base(key) == key && !strings.ContainsAny(key, "/\\") && key != "." && key != ".."
 }
 func (s *Service) Body(ctx context.Context, id string) (string, error) {
-	rows, err := s.DB.QueryContext(ctx, "SELECT content FROM knowledge_entries WHERE material_id=? ORDER BY chunk_index", id)
+	var body string
+	err := s.DB.QueryRowContext(ctx, "SELECT body_text FROM knowledge_entries WHERE material_id=?", id).Scan(&body)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
 	if err != nil {
 		return "", err
 	}
-	defer rows.Close()
-	var b strings.Builder
-	for rows.Next() {
-		var part string
-		if err = rows.Scan(&part); err != nil {
-			return "", err
-		}
-		b.WriteString(part)
-	}
-	return b.String(), rows.Err()
+	return body, nil
 }
+// @Route GET /api/materials
+// @Summary 本班材料列表
+// @Role class
+// @Query q
+// @Response 200 Materials
 func (s *Service) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.Current(r)
-	rows, err := s.DB.QueryContext(r.Context(), `SELECT m.id,m.class_id,m.uploader_id,u.username,m.title,m.original_filename,m.created_at FROM materials m JOIN users u ON u.id=m.uploader_id WHERE m.class_id=? AND m.status='ready' ORDER BY m.created_at DESC,m.id`, *u.ClassID)
+	rows, err := s.DB.QueryContext(r.Context(), `SELECT m.id,m.class_id,m.uploader_id,u.username,m.title,m.original_filename,m.created_at,
+		COALESCE((SELECT CASE WHEN COUNT(*)=0 THEN 'missing' WHEN SUM(c.index_status='failed')>0 THEN 'failed' WHEN SUM(c.index_status='pending')>0 THEN 'pending' ELSE 'ready' END FROM knowledge_chunks c WHERE c.material_id=m.id),'missing')
+		FROM materials m JOIN users u ON u.id=m.uploader_id WHERE m.class_id=? AND m.status='ready' ORDER BY m.created_at DESC,m.id`, *u.ClassID)
 	if err != nil {
 		auth.Error(w, 503, "service_unavailable")
 		return
@@ -76,7 +85,7 @@ func (s *Service) List(w http.ResponseWriter, r *http.Request) {
 	items := []Material{}
 	for rows.Next() {
 		var m Material
-		if err = rows.Scan(&m.ID, &m.ClassID, &m.UploaderID, &m.Uploader, &m.Title, &m.Filename, &m.CreatedAt); err != nil {
+		if err = rows.Scan(&m.ID, &m.ClassID, &m.UploaderID, &m.Uploader, &m.Title, &m.Filename, &m.CreatedAt, &m.IndexStatus); err != nil {
 			break
 		}
 		items = append(items, m)
@@ -105,7 +114,9 @@ func (s *Service) List(w http.ResponseWriter, r *http.Request) {
 }
 func (s *Service) Find(w http.ResponseWriter, r *http.Request) (*Material, bool) {
 	var m Material
-	err := s.DB.QueryRowContext(r.Context(), `SELECT m.id,m.class_id,m.uploader_id,u.username,m.title,m.original_filename,m.created_at,m.storage_key,m.status FROM materials m JOIN users u ON u.id=m.uploader_id WHERE m.id=?`, r.PathValue("id")).Scan(&m.ID, &m.ClassID, &m.UploaderID, &m.Uploader, &m.Title, &m.Filename, &m.CreatedAt, &m.StorageKey, &m.Status)
+	err := s.DB.QueryRowContext(r.Context(), `SELECT m.id,m.class_id,m.uploader_id,u.username,m.title,m.original_filename,m.created_at,m.storage_key,m.status,
+		COALESCE((SELECT CASE WHEN COUNT(*)=0 THEN 'missing' WHEN SUM(c.index_status='failed')>0 THEN 'failed' WHEN SUM(c.index_status='pending')>0 THEN 'pending' ELSE 'ready' END FROM knowledge_chunks c WHERE c.material_id=m.id),'missing')
+		FROM materials m JOIN users u ON u.id=m.uploader_id WHERE m.id=?`, r.PathValue("id")).Scan(&m.ID, &m.ClassID, &m.UploaderID, &m.Uploader, &m.Title, &m.Filename, &m.CreatedAt, &m.StorageKey, &m.Status, &m.IndexStatus)
 	reason := "missing"
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		auth.Error(w, 503, "service_unavailable")
@@ -121,6 +132,11 @@ func (s *Service) Find(w http.ResponseWriter, r *http.Request) (*Material, bool)
 	}
 	return &m, true
 }
+// @Route GET /api/materials/{id}
+// @Summary 读取本班材料
+// @Role class
+// @Response 200 Material
+// @Error 404 not_found
 func (s *Service) Detail(w http.ResponseWriter, r *http.Request) {
 	m, ok := s.Find(w, r)
 	if !ok {
@@ -134,6 +150,11 @@ func (s *Service) Detail(w http.ResponseWriter, r *http.Request) {
 	m.Content = body
 	auth.JSON(w, 200, m)
 }
+// @Route GET /api/materials/{id}/file
+// @Summary 下载本班材料文件
+// @Role class
+// @Response 200 Binary
+// @Error 404 not_found
 func (s *Service) Download(w http.ResponseWriter, r *http.Request) {
 	m, ok := s.Find(w, r)
 	if !ok {
@@ -190,6 +211,14 @@ func Validate(filename, contentType string, data []byte) error {
 	}
 	return nil
 }
+// @Route POST /api/materials
+// @Summary 上传本班UTF8文本资料
+// @Role teacher
+// @Multipart file
+// @Response 201 UploadResult
+// @Error 400 invalid_upload / unsupported_file / invalid_text / invalid_strategy
+// @Error 413 file_too_large
+// @Error 500 storage_failed / internal_error
 func (s *Service) Upload(w http.ResponseWriter, r *http.Request) {
 	if !s.Clean.Load() {
 		auth.Error(w, 503, "service_unavailable")
@@ -209,6 +238,7 @@ func (s *Service) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 	var filename, ct string
 	var data []byte
+	fields := map[string]string{}
 	seen := false
 	for {
 		part, e := reader.NextPart()
@@ -240,7 +270,13 @@ func (s *Service) Upload(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		} else {
-			_, e = io.Copy(io.Discard, part)
+			var value []byte
+			value, e = io.ReadAll(io.LimitReader(part, 4097))
+			if len(value) > 4096 {
+				e = errors.New("field_too_large")
+			} else if part.FormName() != "" {
+				fields[part.FormName()] = string(value)
+			}
 		}
 		part.Close()
 		if e != nil {
@@ -261,6 +297,17 @@ func (s *Service) Upload(w http.ResponseWriter, r *http.Request) {
 		auth.Error(w, 400, err.Error())
 		return
 	}
+	strategy, opts, err := parseIndexOptions(fields)
+	if err != nil {
+		auth.Error(w, 400, err.Error())
+		return
+	}
+	// Validate the selected strategy before saving the material. Auto ignores
+	// every custom option by contract.
+	if _, err = knowledge.Chunks(string(data), strategy, opts); err != nil {
+		auth.Error(w, 400, err.Error())
+		return
+	}
 	id, err := RandomKey()
 	if err != nil {
 		auth.Error(w, 500, "internal_error")
@@ -275,7 +322,59 @@ func (s *Service) Upload(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	auth.JSON(w, 201, map[string]string{"id": id, "status": "ready"})
+	indexStatus := "pending"
+	if s.Indexer == nil {
+		indexStatus = "unavailable"
+	} else if err = s.Indexer.IndexMaterial(r.Context(), id, strategy, opts); err != nil {
+		// The file and authoritative body are deliberately retained. The
+		// indexer marks replacement chunks failed and removes partial points.
+		indexStatus = "failed"
+	} else {
+		indexStatus = "ready"
+	}
+	auth.JSON(w, 201, map[string]string{"id": id, "status": "ready", "index_status": indexStatus})
+}
+
+func parseIndexOptions(fields map[string]string) (string, knowledge.Options, error) {
+	strategy := strings.TrimSpace(fields["strategy"])
+	if strategy == "" {
+		strategy = "auto"
+	}
+	opts := knowledge.Options{}
+	if strategy != "custom" {
+		return strategy, opts, nil
+	}
+	maxLength, err := strconv.Atoi(strings.TrimSpace(fields["max_length"]))
+	if err != nil {
+		return "", opts, errors.New("invalid_chunk_length")
+	}
+	overlap, err := strconv.Atoi(strings.TrimSpace(fields["overlap_percent"]))
+	if err != nil {
+		return "", opts, errors.New("invalid_chunk_overlap")
+	}
+	parseBool := func(name string) (bool, error) {
+		raw := strings.TrimSpace(fields[name])
+		if raw == "" {
+			return false, nil
+		}
+		return strconv.ParseBool(raw)
+	}
+	removeURLs, err := parseBool("remove_urls")
+	if err != nil {
+		return "", opts, errors.New("invalid_preprocessing")
+	}
+	removeEmails, err := parseBool("remove_emails")
+	if err != nil {
+		return "", opts, errors.New("invalid_preprocessing")
+	}
+	collapseWhitespace, err := parseBool("collapse_whitespace")
+	if err != nil {
+		return "", opts, errors.New("invalid_preprocessing")
+	}
+	opts = knowledge.Options{MaxLength: maxLength, OverlapPercent: overlap,
+		Separator: strings.TrimSpace(fields["separator"]), RemoveURLs: removeURLs,
+		RemoveEmails: removeEmails, CollapseWhitespace: collapseWhitespace}
+	return strategy, opts, nil
 }
 
 var errStorage = errors.New("storage failure")
@@ -326,10 +425,8 @@ func (s *Service) Create(ctx context.Context, m Material, data []byte) error {
 	if err != nil {
 		return err
 	}
-	for i, chunk := range knowledge.Split(string(data), 2000) {
-		if _, err = tx.ExecContext(ctx, "INSERT INTO knowledge_entries(material_id,class_id,chunk_index,content) VALUES(?,?,?,?)", m.ID, m.ClassID, i, chunk); err != nil {
-			return err
-		}
+	if _, err = tx.ExecContext(ctx, "INSERT INTO knowledge_entries(material_id,class_id,body_text) VALUES(?,?,?)", m.ID, m.ClassID, string(data)); err != nil {
+		return err
 	}
 	if _, err = os.Lstat(finalName); err == nil || !os.IsNotExist(err) {
 		return errStorage

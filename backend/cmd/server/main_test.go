@@ -8,9 +8,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
-	"net/http/cookiejar"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -42,6 +40,13 @@ func setupServer(t *testing.T) (string, *auth.Service, *materials.Service) {
 	}
 	for _, stmt := range []string{
 		"SET FOREIGN_KEY_CHECKS=0",
+ "TRUNCATE TABLE tutor_agent_materials", "TRUNCATE TABLE tutor_agent_skills", "TRUNCATE TABLE tutor_agents", "TRUNCATE TABLE skills",
+		"TRUNCATE TABLE message_citations",
+		"TRUNCATE TABLE conversation_messages",
+		"TRUNCATE TABLE conversations",
+		"TRUNCATE TABLE class_skills",
+		"TRUNCATE TABLE assistant_prompts",
+		"TRUNCATE TABLE knowledge_chunks",
 		"TRUNCATE TABLE knowledge_entries",
 		"TRUNCATE TABLE materials",
 		"TRUNCATE TABLE sessions",
@@ -107,16 +112,50 @@ func doJSON(t *testing.T, client *http.Client, method, url string, body any) *ht
 	return resp
 }
 
+type bearerTransport struct {
+	token string
+}
+
+func (t *bearerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	clone := req.Clone(req.Context())
+	clone.Header = req.Header.Clone()
+	if t.token != "" {
+		clone.Header.Set("Authorization", "Bearer "+t.token)
+	}
+	return http.DefaultTransport.RoundTrip(clone)
+}
+
+func newBearerClient() *http.Client {
+	return &http.Client{Transport: &bearerTransport{}}
+}
+
+func tokenOf(client *http.Client) string {
+	return client.Transport.(*bearerTransport).token
+}
+
+func setToken(client *http.Client, token string) {
+	client.Transport.(*bearerTransport).token = token
+}
+
 func login(t *testing.T, client *http.Client, baseURL, user, pass string) int {
 	resp := doJSON(t, client, "POST", baseURL+"/api/login", map[string]string{"username": user, "password": pass})
+	if resp.StatusCode == http.StatusOK {
+		var result auth.LoginResponse
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatal(err)
+		}
+		if result.TokenType != "Bearer" || result.AccessToken == "" || result.ExpiresIn <= 0 {
+			t.Fatalf("invalid login response: token_type=%q token_length=%d expires_in=%d", result.TokenType, len(result.AccessToken), result.ExpiresIn)
+		}
+		setToken(client, result.AccessToken)
+	}
 	resp.Body.Close()
 	return resp.StatusCode
 }
 
 func TestLoginSuccessAndFailure(t *testing.T) {
 	baseURL, _, _ := setupServer(t)
-	jar, _ := cookiejar.New(nil)
-	client := &http.Client{Jar: jar}
+	client := newBearerClient()
 	if code := login(t, client, baseURL, "a-teacher", "teacher-fixture-pw"); code != 200 {
 		t.Fatalf("teacher login failed: %d", code)
 	}
@@ -155,8 +194,7 @@ func TestLoginInvalidJSON(t *testing.T) {
 
 func TestApiMeAndLogout(t *testing.T) {
 	baseURL, _, _ := setupServer(t)
-	jar, _ := cookiejar.New(nil)
-	client := &http.Client{Jar: jar}
+	client := newBearerClient()
 	login(t, client, baseURL, "a-teacher", "teacher-fixture-pw")
 	resp, err := client.Get(baseURL + "/api/me")
 	if err != nil {
@@ -188,24 +226,29 @@ func TestApiMeAndLogout(t *testing.T) {
 
 func TestSessionRotationOnRelogin(t *testing.T) {
 	baseURL, _, _ := setupServer(t)
-	jar, _ := cookiejar.New(nil)
-	client := &http.Client{Jar: jar}
+	client := newBearerClient()
 	login(t, client, baseURL, "a-teacher", "teacher-fixture-pw")
-	cookie1 := jar.Cookies(mustParseURL(baseURL))
+	token1 := tokenOf(client)
 	login(t, client, baseURL, "a-teacher", "teacher-fixture-pw")
-	cookie2 := jar.Cookies(mustParseURL(baseURL))
-	if len(cookie1) == 0 || len(cookie2) == 0 {
-		t.Fatal("no cookies set")
+	token2 := tokenOf(client)
+	if token1 == "" || token2 == "" {
+		t.Fatal("no bearer token returned")
 	}
-	if cookie1[0].Value == cookie2[0].Value {
+	if token1 == token2 {
 		t.Fatal("session not rotated")
 	}
+	oldClient := newBearerClient()
+	setToken(oldClient, token1)
+	oldResp, _ := oldClient.Get(baseURL + "/api/me")
+	if oldResp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("old token should be revoked: %d", oldResp.StatusCode)
+	}
+	oldResp.Body.Close()
 }
 
 func TestMaterialsListClassIsolation(t *testing.T) {
 	baseURL, _, _ := setupServer(t)
-	jarA, _ := cookiejar.New(nil)
-	clientA := &http.Client{Jar: jarA}
+	clientA := newBearerClient()
 	login(t, clientA, baseURL, "a-student", "student-fixture-pw")
 	resp, _ := clientA.Get(baseURL + "/api/materials")
 	if resp.StatusCode != 200 {
@@ -221,8 +264,7 @@ func TestMaterialsListClassIsolation(t *testing.T) {
 			t.Fatalf("B class material leaked into A: %v", mat["title"])
 		}
 	}
-	jarB, _ := cookiejar.New(nil)
-	clientB := &http.Client{Jar: jarB}
+	clientB := newBearerClient()
 	login(t, clientB, baseURL, "b-student", "student-fixture-pw")
 	resp2, _ := clientB.Get(baseURL + "/api/materials")
 	json.NewDecoder(resp2.Body).Decode(&result)
@@ -238,16 +280,14 @@ func TestMaterialsListClassIsolation(t *testing.T) {
 
 func TestMaterialDetailCrossClass404(t *testing.T) {
 	baseURL, _, _ := setupServer(t)
-	jarA, _ := cookiejar.New(nil)
-	clientA := &http.Client{Jar: jarA}
+	clientA := newBearerClient()
 	login(t, clientA, baseURL, "a-student", "student-fixture-pw")
 	resp, _ := clientA.Get(baseURL + "/api/materials/seed-a-intro")
 	if resp.StatusCode != 200 {
 		t.Fatalf("own class detail should 200: %d", resp.StatusCode)
 	}
 	resp.Body.Close()
-	jarB, _ := cookiejar.New(nil)
-	clientB := &http.Client{Jar: jarB}
+	clientB := newBearerClient()
 	login(t, clientB, baseURL, "b-student", "student-fixture-pw")
 	resp2, _ := clientB.Get(baseURL + "/api/materials/seed-a-intro")
 	if resp2.StatusCode != 404 {
@@ -263,8 +303,7 @@ func TestMaterialDetailCrossClass404(t *testing.T) {
 
 func TestStudentUploadForbidden(t *testing.T) {
 	baseURL, _, _ := setupServer(t)
-	jar, _ := cookiejar.New(nil)
-	client := &http.Client{Jar: jar}
+	client := newBearerClient()
 	login(t, client, baseURL, "a-student", "student-fixture-pw")
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
@@ -285,8 +324,7 @@ func TestStudentUploadForbidden(t *testing.T) {
 
 func TestTeacherUploadSuccess(t *testing.T) {
 	baseURL, _, _ := setupServer(t)
-	jar, _ := cookiejar.New(nil)
-	client := &http.Client{Jar: jar}
+	client := newBearerClient()
 	login(t, client, baseURL, "a-teacher", "teacher-fixture-pw")
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
@@ -324,8 +362,7 @@ func TestTeacherUploadSuccess(t *testing.T) {
 
 func TestUploadValidation(t *testing.T) {
 	baseURL, _, _ := setupServer(t)
-	jar, _ := cookiejar.New(nil)
-	client := &http.Client{Jar: jar}
+	client := newBearerClient()
 	login(t, client, baseURL, "a-teacher", "teacher-fixture-pw")
 	tests := []struct {
 		name     string
@@ -362,8 +399,7 @@ func TestUploadValidation(t *testing.T) {
 
 func TestMaterialDownload(t *testing.T) {
 	baseURL, _, _ := setupServer(t)
-	jarA, _ := cookiejar.New(nil)
-	clientA := &http.Client{Jar: jarA}
+	clientA := newBearerClient()
 	login(t, clientA, baseURL, "a-student", "student-fixture-pw")
 	resp, _ := clientA.Get(baseURL + "/api/materials/seed-a-intro/file")
 	if resp.StatusCode != 200 {
@@ -374,8 +410,7 @@ func TestMaterialDownload(t *testing.T) {
 	if !strings.Contains(string(body), "A班") {
 		t.Fatal("download content mismatch")
 	}
-	jarB, _ := cookiejar.New(nil)
-	clientB := &http.Client{Jar: jarB}
+	clientB := newBearerClient()
 	login(t, clientB, baseURL, "b-student", "student-fixture-pw")
 	resp2, _ := clientB.Get(baseURL + "/api/materials/seed-a-intro/file")
 	if resp2.StatusCode != 404 {
@@ -391,6 +426,9 @@ func TestNoSessionEndpointsRequireAuth(t *testing.T) {
 	if resp.StatusCode != 401 {
 		t.Fatalf("no session /api/me should 401: %d", resp.StatusCode)
 	}
+	if got := resp.Header.Get("WWW-Authenticate"); got != "Bearer" {
+		t.Fatalf("WWW-Authenticate = %q, want Bearer", got)
+	}
 	resp.Body.Close()
 	resp2, _ := client.Get(baseURL + "/api/materials")
 	if resp2.StatusCode != 401 {
@@ -399,7 +437,40 @@ func TestNoSessionEndpointsRequireAuth(t *testing.T) {
 	resp2.Body.Close()
 }
 
-func mustParseURL(s string) *url.URL {
-	u, _ := url.Parse(s)
-	return u
+func TestOnlyValidBearerAuthorizationAuthenticates(t *testing.T) {
+	baseURL, _, _ := setupServer(t)
+	client := newBearerClient()
+	login(t, client, baseURL, "a-student", "student-fixture-pw")
+	token := tokenOf(client)
+
+	tests := []struct {
+		name    string
+		headers []string
+		cookie  bool
+	}{
+		{name: "basic", headers: []string{"Basic " + token}},
+		{name: "missing token", headers: []string{"Bearer"}},
+		{name: "invalid token", headers: []string{"Bearer invalid"}},
+		{name: "duplicate", headers: []string{"Bearer " + token, "Bearer " + token}},
+		{name: "cookie only", cookie: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req, _ := http.NewRequest("GET", baseURL+"/api/me", nil)
+			for _, value := range tc.headers {
+				req.Header.Add("Authorization", value)
+			}
+			if tc.cookie {
+				req.AddCookie(&http.Cookie{Name: "campus_session", Value: token})
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusUnauthorized {
+				t.Fatalf("status = %d, want 401", resp.StatusCode)
+			}
+		})
+	}
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ApiError, uploadMaterial } from './api';
+import { ApiError, uploadMaterial, type ChunkOptions, type ChunkStrategy } from './api';
 
 interface Props {
   onClose: () => void;
@@ -24,6 +24,15 @@ export function Upload({ onClose, onUploaded, onUnauthorized, onToast }: Props) 
   const [progress, setProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [ingesting, setIngesting] = useState(false);
+	const [strategy, setStrategy] = useState<ChunkStrategy>('auto');
+	const [chunkOptions, setChunkOptions] = useState<ChunkOptions>({
+		max_length: 800,
+		overlap_percent: 10,
+		separator: 'blank',
+		remove_urls: false,
+		remove_emails: false,
+		collapse_whitespace: false,
+	});
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -54,6 +63,8 @@ export function Upload({ onClose, onUploaded, onUnauthorized, onToast }: Props) 
     try {
       await uploadMaterial({
         file,
+		strategy,
+		chunkOptions,
         signal: controller.signal,
         onProgress: (p) => {
           setProgress(p.percent);
@@ -137,6 +148,26 @@ export function Upload({ onClose, onUploaded, onUnauthorized, onToast }: Props) 
               </span>
             </div>
           )}
+		  <label className="field">
+			<span className="field-label">切分策略</span>
+			<select value={strategy} onChange={(e) => setStrategy(e.target.value as ChunkStrategy)} disabled={busy}>
+				<option value="auto">自动（800 字 / 重叠 80 字）</option>
+				<option value="custom">自定义</option>
+				<option value="hierarchy">Markdown 标题层级</option>
+			</select>
+		  </label>
+		  {strategy === 'custom' && (
+			<div className="chunk-options">
+				<label className="field"><span className="field-label">最大长度（100–2000）</span><input type="number" min={100} max={2000} value={chunkOptions.max_length} onChange={(e) => setChunkOptions((o) => ({ ...o, max_length: Number(e.target.value) }))} disabled={busy} /></label>
+				<label className="field"><span className="field-label">重叠比例（0–50%）</span><input type="number" min={0} max={50} value={chunkOptions.overlap_percent} onChange={(e) => setChunkOptions((o) => ({ ...o, overlap_percent: Number(e.target.value) }))} disabled={busy} /></label>
+				<label className="field"><span className="field-label">优先分隔符</span><select value={chunkOptions.separator} onChange={(e) => setChunkOptions((o) => ({ ...o, separator: e.target.value as ChunkOptions['separator'] }))} disabled={busy}><option value="blank">空行</option><option value="newline">换行</option><option value="period">句号</option></select></label>
+				<div className="chunk-checks">
+					<label><input type="checkbox" checked={chunkOptions.remove_urls} onChange={(e) => setChunkOptions((o) => ({ ...o, remove_urls: e.target.checked }))} /> 移除 URL</label>
+					<label><input type="checkbox" checked={chunkOptions.remove_emails} onChange={(e) => setChunkOptions((o) => ({ ...o, remove_emails: e.target.checked }))} /> 移除邮箱</label>
+					<label><input type="checkbox" checked={chunkOptions.collapse_whitespace} onChange={(e) => setChunkOptions((o) => ({ ...o, collapse_whitespace: e.target.checked }))} /> 合并连续空白</label>
+				</div>
+			</div>
+		  )}
           {(uploading || ingesting) && (
             <div className="upload-progress">
               <div

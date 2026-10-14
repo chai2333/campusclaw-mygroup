@@ -67,6 +67,8 @@ func mysqlConn(t *testing.T) *sql.DB {
 	}
 	for _, stmt := range []string{
 		"SET FOREIGN_KEY_CHECKS=0",
+ "TRUNCATE TABLE tutor_agent_materials", "TRUNCATE TABLE tutor_agent_skills", "TRUNCATE TABLE tutor_agents", "TRUNCATE TABLE skills",
+		"TRUNCATE TABLE knowledge_chunks",
 		"TRUNCATE TABLE knowledge_entries",
 		"TRUNCATE TABLE materials",
 		"TRUNCATE TABLE sessions",
@@ -127,6 +129,13 @@ func TestMigration(t *testing.T) {
 	mysql.QueryRowContext(ctx, "SELECT COUNT(*) FROM materials WHERE status='failed'").Scan(&count)
 	if count != 0 {
 		t.Fatal("failed material should not be migrated")
+	}
+	var body string
+	if err := mysql.QueryRowContext(ctx, "SELECT body_text FROM knowledge_entries WHERE material_id='mat-1'").Scan(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body != "helloworld" {
+		t.Fatalf("migrated body mismatch: %q", body)
 	}
 	// Idempotency: second run should not duplicate
 	report2, err := Run(ctx, sqlitePath, uploadsDir, mysql, dstUploads)

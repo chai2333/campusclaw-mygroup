@@ -18,7 +18,7 @@
 
 浏览器 → Nginx web → Go api → MySQL db。只有 web 发布宿主端口，默认 `WEB_PORT=8080`。Nginx 代理 `/api`、`/health`、`/ready`；`/uploads` 明确拒绝且不落到 SPA fallback。前端构建产物由 Nginx 提供，上传卷仅 API 挂载。Vite 开发代理使用同样路径。
 
-SPA shell 不含业务数据，但 `/materials` 等受保护文档请求仍由 Nginx auth_request 调用 API 身份检查后放行；无会话跳转 `/login`，依赖故障显示 503。直接 API 请求保持 JSON 401，不被入口改写成 HTML 或 200。静态壳、前端隐藏按钮均不承担最终授权。
+SPA shell 不含业务数据并可公开加载。由于浏览器顶层导航不能附加应用自定义的 Authorization 头，React 加载后使用当前标签页中的 Bearer Token 调用 `/api/me`：无令牌或无效令牌进入 `/login`，依赖故障显示 503。直接 API 请求保持 JSON 401，不被入口改写成 HTML 或 200。静态壳、前端路由和隐藏按钮均不承担最终授权。
 
 备选：继续 Flask 单体虽能满足行为，但用户选择课件栈；直接映射 API/DB 端口增加旁路，故不采用。为前端引入 UI 组件库会偏离本次原生 CSS 设计系统，故不采用。
 
@@ -32,9 +32,9 @@ SPA shell 不含业务数据，但 `/materials` 等受保护文档请求仍由 N
 
 ### Decision 3: 服务端会话、密码与登录限流
 
-使用 `crypto/rand` 生成至少 256 位熵的随机会话 ID，Cookie 只含不透明 ID；MySQL sessions 保存用户关联、创建及过期时间，不复制角色或班级。`SESSION_SECRET` 用于 HMAC-SHA256 派生存储侧会话查找键，数据库不必保存可直接复用的原始 ID；它不得取代密码学随机源。认证请求连接当前用户记录，每次重新读取角色与班级。成功登录在事务中撤销请求携带的旧会话、创建新会话；登出撤销并清 Cookie，过期会话拒绝并清理。
+使用 `crypto/rand` 生成至少 256 位熵的不透明访问令牌；登录以 JSON 返回 `access_token`、固定 `token_type=Bearer` 和 `expires_in`。MySQL sessions 保存令牌 HMAC 查找键、用户关联、创建及过期时间，不复制角色或班级，也不保存可直接复用的原始令牌。`SESSION_SECRET` 用于 HMAC-SHA256 派生存储侧查找键，不得取代密码学随机源。受保护请求只从单个 `Authorization: Bearer <token>` 头读取令牌并连接当前用户记录，每次重新读取角色与班级；Cookie 不参与认证。成功登录在事务中撤销请求携带的旧 Bearer 会话、创建新会话；登出撤销当前令牌，过期令牌拒绝并可清理。
 
-Cookie 设置 HttpOnly、SameSite=Lax、Path=/，本地 development HTTP 不加 Secure，非开发环境加 Secure。TTL 默认 28800 秒，正整数环境变量配置。所有身份及材料响应 no-store，不在 localStorage 保存身份声明、会话或材料；只允许保存主题/视图偏好。
+TTL 默认 28800 秒，通过正整数环境变量配置。所有身份及材料响应 `no-store`，401 带 `WWW-Authenticate: Bearer`。Web 仅在 `sessionStorage` 保存当前标签页访问令牌，刷新时可恢复；退出、认证 401 或关闭标签页后不再保留。客户端不得保存角色、班级或材料作为授权依据，主题和视图偏好仍可保存在 localStorage。
 
 新账号使用 bcrypt（cost 12）。现有 Argon2id 哈希原样导入，Go 兼容其 PHC 参数和常量时间结果比较；有效登录后，在密码符合 bcrypt 输入长度时升级哈希，超出 bcrypt 长度限制的历史密码继续使用 Argon2id，不能静默截断或锁住账号。新种子密码超过 bcrypt 72 字节限制时配置校验失败。迁移不能从旧哈希直接换算 bcrypt，也不要求明文导出。
 
@@ -48,7 +48,7 @@ Cookie 设置 HttpOnly、SameSite=Lax、Path=/，本地 development HTTP 不加 
 
 列表/搜索 SQL 始终附加服务端班级条件；请求 query、Header、JSON、multipart 中的 role/class_id 不参与授权，班级声明直接忽略。上传由当前数据库用户班级绑定。
 
-对象详情和文件在内部按 ID 取行，然后检查班级和 ready 状态；检查完成前不能读取正文、打开文件或序列化元数据。跨班与不存在返回相同 `404 {"error":"not_found"}`、相同内容类型及缓存策略。日志记录 actor、操作、资源 ID、结果原因，不记录 Cookie、密码、正文或存储路径。无班级身份和学生上传返回 403；认证有效但数据库查询失败返回 503。
+对象详情和文件在内部按 ID 取行，然后检查班级和 ready 状态；检查完成前不能读取正文、打开文件或序列化元数据。跨班与不存在返回相同 `404 {"error":"not_found"}`、相同内容类型及缓存策略。日志记录 actor、操作、资源 ID、结果原因，不记录访问令牌、Authorization 头、密码、正文或存储路径。无班级身份和学生上传返回 403；认证有效但数据库查询失败返回 503。
 
 备选：联合 ID＋班级查询同样可以隔离，但本次采用课件的先取行再校验，便于内部审计区分真实原因；返回 403 给跨班对象会暴露存在性，故统一 404。
 
@@ -72,7 +72,7 @@ Cookie 设置 HttpOnly、SameSite=Lax、Path=/，本地 development HTTP 不加 
 
 ### Decision 7: 完整 Web 行为与原生 CSS 设计系统
 
-两类主页面为登录和材料；详情通过材料页的路由/面板展示。刷新、重开标签或恢复页面均用 `/api/me` 确认身份；上传入口只由其 role 决定，任何业务 401 清内存状态回登录，403/404 按语义展示，503 显示服务不可用且不误清会话。
+两类主页面为登录和材料；详情通过材料页的路由/面板展示。刷新或恢复当前标签页时从 sessionStorage 取得 Bearer Token 并用 `/api/me` 确认身份；新标签页需要重新登录。上传入口只由 `/api/me` 的 role 决定，任何业务 401 清令牌与内存状态并回登录，403/404 按语义展示，503 显示服务不可用且不误清令牌。
 
 定义北大红品牌 token（本项目取 #8C1515）、浅色/深色背景与文字 token、间距/字号/焦点状态。首次跟随系统主题，手动选择后保存偏好；列表/网格切换保持搜索条件。320px 手机至桌面布局可用，无页面级横向溢出，表格可在自身容器滚动；按钮与输入有可访问名称及可见键盘焦点。
 
@@ -116,9 +116,9 @@ README 必须包含范围/不做项、单实例限制、配置说明、账号与
 
 | Method / Path | Result / Authorization |
 | --- | --- |
-| POST /api/login | JSON username/password；200；非法结构 400；失败/锁定同形 401 |
-| GET /api/me | 200 当前 id/username/role/class_id；无效会话 401 |
-| POST /api/logout | 有效会话 200 并撤销/清 Cookie；无效会话 401 并清 Cookie |
+| POST /api/login | JSON username/password；200 返回 access_token/token_type/expires_in；非法结构 400；失败/锁定同形 401 |
+| GET /api/me | Bearer；200 当前 id/username/role/class_id；无效令牌 401 |
+| POST /api/logout | Bearer；有效令牌 200 并撤销；无效令牌 401 |
 | GET /api/materials?q= | 本班列表/普通搜索 200；无会话 401；无班级 403 |
 | POST /api/materials | 教师 multipart file；201；学生 403；校验 400；超限 413 |
 | GET /api/materials/{id} | 本班正文/元数据 200；跨班/不存在 404 |
@@ -130,6 +130,7 @@ README 必须包含范围/不做项、单实例限制、配置说明、账号与
 
 ## Risks / Trade-offs
 
+- [Bearer Token 可被页面脚本读取] → 仅保存于当前标签页 sessionStorage，所有响应 no-store，Markdown 禁止原始 HTML 和危险 URL，并在 401/注销时立即清除；生产入口必须使用 HTTPS。
 - [跨栈迁移丢数据] → 源备份、只读导入、ID/正文/文件校验、切换前回滚演练。
 - [数据库与磁盘提交并非同一事务] → 请求内补偿、启动前对账、清理失败不就绪。
 - [历史 Argon2id 与 bcrypt 耗时不同] → 双算法正确校验、虚拟比较、失败限流与逐步升级，不能宣称恒定响应时间。
