@@ -1,6 +1,6 @@
 # CampusClaw
 
-一个按班级隔离的课程材料知识库和学习助手。教师上传 UTF-8 的 `.txt` 或 `.md` 材料，创建多个本班智能体、编写技能文件并绑定材料；教师和学生可选择智能体，在自己的会话中连续追问，并收到带资料出处的流式回答。
+一个按班级隔离的课程材料知识库和学习助手。教师上传 UTF-8 的 `.txt` 或 `.md` 材料，创建多个本班智能体、编写技能文件并绑定材料；教师和学生可选择智能体，在自己的会话中连续追问，并收到带资料出处的流式回答。第6课支持登记本班MCP服务器，让模型在技能绑定的工具中选择并调用，教师可查看逐轮审计。
 
 技术栈：Go `net/http` + MySQL 8.0 + React 18/TypeScript/Vite + Nginx。
 
@@ -205,7 +205,7 @@ npm run dev   # Vite dev server with proxy to :8080
 - 无 PDF/Office 通用文件预览（仅 txt/md 正文展示）。
 - 不包含作业提交、批改、错题讲解、异步队列、关怀式对话、会话共享或学生自定义提示词/技能。
 
-## 第5课 Swagger 与接口验收
+## Swagger 与第3–6课接口验收
 
 启动应用后打开 `/swagger/`，OpenAPI JSON 位于 `/openapi.json`。页面使用随 Go 程序发布的 Swagger UI 5.32.0，不依赖运行时 CDN。OpenAPI由处理器注解生成。后端执行 `go generate ./internal/apidocs` 可重建文档，Docker构建自动执行；schemas模板位于 `backend/internal/apidocs/contracts.json`。先试调 `POST /api/login`，复制 `access_token` 到 Authorize（只填令牌原文），即可试调受保护接口。教师可管理智能体、技能及绑定；教师和学生均可创建自己的会话；学生访问教师接口返回 403。SSE 的事件结构和启动前/后的错误语义在消息接口中说明，逐段显示由学生页面和接口测试验证。
 
@@ -271,3 +271,48 @@ docker compose --project-name campusclaw-lesson5-apitest \
 ```
 
 它记录数学数值题和语文默写的真实回答，检查语文默写时引导不直接给诗的下一句、停用后答案变化和材料注入；结果在本机 `apitest/reports/real-model.json`，不入Git。整个自动套件可独立验证隔离规则；课程要求的同伴本人账号交叉验证仍需由同伴执行并记录，不能以自动脚本冒充。
+
+
+## 第6课：MCP与工具接入
+
+同仓 `mcp-server/` 提供两个只读教学工具，`formula_hint`给公式与步骤提示，`unit_convert`给单位换算方向/倍率，由学生完成数值计算。`POST /mcp` 使用JSON-RPC 2.0，支持initialize、tools/list、tools/call以及initialized通知；`GET /health`不需要令牌。Compose服务名为 `mcp-demo`，仅在内部网络监听8090，不开放宿主端口。现有 `docker compose` 或课堂入口 `docker compose -f docker-compose.yml` 均启动同一套应用。
+
+在本机 `.env` 增加随机 `MCP_AUTH_TOKEN`（至少16字符），只在启动时分别注入API和工具容器，禁止写进代码或Dockerfile。可用 `python3 -c 'import secrets; print(secrets.token_urlsafe(32))'` 在自己的终端生成，再填入 `.env`；不要把生成值贴进仓库或截图。主机和自建服务使用同一值，新增其他服务器时分别使用专属令牌。
+
+教师登录后打开 `/mcp`（导航“MCP 工具”）：
+
+1. 登记 `campus-tools`，Base URL填 `http://mcp-demo:8090`，勾选使用本机环境令牌，保存后点击“连接并发现”。能看到两个工具的完整说明、输入结构与确认状态。
+2. 在“智能体与技能”的技能文件中添加 `工具：formula_hint@campus-tools,unit_convert@campus-tools`，例如适用条件为“单位,路程,匀速”；先连接再保存，否则返回可读400。把技能绑定到智能体。
+3. 学生选择该智能体新建会话，提问“速度每小时3公里，运动2分钟；先提示怎样统一单位，再提示路程公式，不直接算结果”。由模型决定工具与参数，宿主按发现的Schema校验后带令牌执行，结果以tool消息回传，不进入system提示。
+4. 对话首字前显示工具引用、轮次及成功/被拒/出错。教师在MCP管理页查看本班倒序调用记录，含用户、会话、消息、时间、轮次和摘要。刷新聊天保留调用快照。
+5. 断开会清空工具清单；已有技能下一轮会明确显示denied并留下拒绝记录，仍继续回答。删除/改名后的失效引用也在会话显示denied，但不伪造服务器归属。连接失败不阻断旧检索/聊天路径。
+
+每轮仅向模型提供本次匹配技能的工具声明，名称、说明、输入结构均来自发现。默认最多3轮、每次提问6次、每会话累计12次调用，分别由 `MCP_MAX_ROUNDS`、`MCP_MAX_TURN_CALLS`、`MCP_MAX_CONVERSATION_CALLS`配置；达到上限时撤下工具，基于已有信息继续流式回答。参数无效、远端报错/超时均作为失败数据回传。工具返回命中已知指令式注入时整条丢弃并记录error；句式检查不代表完整的自然语言安全保证。
+
+令牌通过SESSION_SECRET派生的AES-GCM密钥加密落库，列表仅返回 `token_configured`。前端密码输入提交后清空，令牌不回显、不传给模型、不记入日志。SESSION_SECRET轮换后须重新配置MCP令牌。URL限制在 `MCP_ALLOWED_BASE_URLS`逗号分隔的精确允许列表内（默认同网服务）；重定向不携带令牌继续访问。发现的工具限64个，每技能最多16条引用，每项输入Schema最大16KB且禁止外部Schema加载。
+
+初次连接视为确认允许地址上声明为只读且非外发的工具。再次发现说明、结构或安全声明改变时，保存完整前后变更，暂停该工具批准；教师查看后逐工具重新确认。写入/外发类工具不会自动执行，本课只提供教学提示工具。
+
+| 接口 | 用途（均须教师Bearer） |
+| --- | --- |
+| GET / POST `/api/mcp/servers` | 列表 / 登记；不返回令牌 |
+| PUT / DELETE `/api/mcp/servers/{id}` | 修改并断开 / 删除配置保留历史 |
+| POST `/api/mcp/servers/{id}/connect` | 握手、发现并整体替换缓存 |
+| POST `/api/mcp/servers/{id}/disconnect` | 断开并清空缓存 |
+| GET `/api/mcp/servers/{id}/tools` | 完整工具声明与批准状态 |
+| POST `/api/mcp/servers/{id}/tools/approve` | 逐工具重新确认，JSON `names`数组 |
+| GET `/api/mcp/tool-calls` | 本班最近100次调用审计 |
+| GET `/api/mcp/tool-changes` | 本班最近100条完整声明变更 |
+
+SSE兼容扩展：初始meta仍包含技能、引用和消息ID；有调用时在第一个delta前继续发送同ID的meta，`tool_calls`为累计快照（不是追加片段）。每条含 `ref/status/text/round`，status仅 `ok/denied/error`；确无调用时省略字段。前端拒绝正文之后才到的meta、身份变化和工具快照回退。
+
+验收命令：`python3 apitest/run_all.py --compose --keep-stack`；真实模型可用 `--real-model`（使用本机忽略目录 `apitest/reports/.env` 的真实对话配置，嵌入仍模拟）。两个模式均连接真实同仓MCP服务；41个URL组织脚本核对响应、数据库及原有业务回归，HTML在忽略目录。独立MCP协议测试：在Python环境进入 `mcp-server/` 执行 `python3 -m unittest -v`。课堂的同伴本人账号交叉验证需实际同伴参与，自动化跨班测试不替代该环节；详见本次OpenSpec验证记录。
+
+真实模型补充样例（独立测试栈，先配置本地测试.env）：
+
+```bash
+docker compose --project-name campusclaw-lesson5-apitest --env-file apitest/reports/.env -f compose.apitest.yaml -f compose.apitest.real.yaml build runner
+docker compose --project-name campusclaw-lesson5-apitest --env-file apitest/reports/.env -f compose.apitest.yaml -f compose.apitest.real.yaml run --rm --entrypoint python runner apitest/accept_mcp_real.py
+```
+
+小上限验收：给同一个独立项目额外加 `-f compose.apitest.limits.yaml`，仅 `up -d --no-deps api`，然后运行上述脚本并加 `--limits`。验收后去掉limits覆盖文件重新启动api，恢复默认配额。该覆盖只用于独立测试环境，不用于主应用。真实样例结果分别保存到忽略目录的 `week6-real-model.json`（两轮、错误、注入、断开4项）和 `week6-real-limits.json`（1次成功后会话配额拒绝2项）。不要在后端数据库测试执行期间用 `--force-recreate db` 重建同一独立项目。

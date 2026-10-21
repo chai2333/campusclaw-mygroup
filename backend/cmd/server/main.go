@@ -1,11 +1,13 @@
 package main
 
 import (
+	"campusclaw/internal/mcp"
 	"context"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -104,6 +106,17 @@ func main() {
 	mux.HandleFunc("PUT /api/assistant/prompt", authSvc.Teacher(assistantSvc.PutPrompt))
 	mux.HandleFunc("GET /api/assistant/skills/guided-problem-solving", authSvc.Teacher(assistantSvc.GetSkill))
 	mux.HandleFunc("PUT /api/assistant/skills/guided-problem-solving", authSvc.Teacher(assistantSvc.PutSkill))
+	mcpSvc := &mcp.Service{DB: conn, Secret: cfg.SessionSecret, DefaultToken: cfg.MCPAuthToken, DefaultURL: cfg.MCPDefaultURL, AllowedURLs: strings.Split(cfg.MCPAllowedURLs, ","), MaxRounds: cfg.MCPMaxRounds, MaxTurnCalls: cfg.MCPMaxTurnCalls, MaxConversationCalls: cfg.MCPMaxConversationCalls}
+	mux.HandleFunc("GET /api/mcp/servers", authSvc.Teacher(mcpSvc.Servers))
+	mux.HandleFunc("POST /api/mcp/servers", authSvc.Teacher(mcpSvc.Create))
+	mux.HandleFunc("PUT /api/mcp/servers/{id}", authSvc.Teacher(mcpSvc.Update))
+	mux.HandleFunc("DELETE /api/mcp/servers/{id}", authSvc.Teacher(mcpSvc.Remove))
+	mux.HandleFunc("POST /api/mcp/servers/{id}/connect", authSvc.Teacher(mcpSvc.ConnectHTTP))
+	mux.HandleFunc("POST /api/mcp/servers/{id}/disconnect", authSvc.Teacher(mcpSvc.DisconnectHTTP))
+	mux.HandleFunc("GET /api/mcp/servers/{id}/tools", authSvc.Teacher(mcpSvc.ToolsHTTP))
+	mux.HandleFunc("POST /api/mcp/servers/{id}/tools/approve", authSvc.Teacher(mcpSvc.ApproveHTTP))
+	mux.HandleFunc("GET /api/mcp/tool-calls", authSvc.Teacher(mcpSvc.AuditHTTP))
+	mux.HandleFunc("GET /api/mcp/tool-changes", authSvc.Teacher(mcpSvc.ChangesHTTP))
 	conversationSvc := &conversation.Service{DB: conn}
 	var dialogueGateway dialogue.Gateway = dialogue.UnavailableGateway{}
 	if cfg.DialogueEnabled() {
@@ -158,6 +171,7 @@ func main() {
 	}
 	mux.HandleFunc("POST /api/ask", authSvc.Class(askSvc.Ask))
 	conversationSvc.Orch = &conversation.Orchestrator{
+		MCP:                mcpSvc,
 		Retriever:          retrievalSvc,
 		Gateway:            dialogueGateway,
 		Model:              cfg.DialogueModel,

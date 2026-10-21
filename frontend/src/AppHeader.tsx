@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import type { Me } from './api';
 
 export type Theme = 'light' | 'dark';
-export type PageName = 'materials' | 'knowledge' | 'conversations' | 'assistant';
+export type PageName = 'materials' | 'knowledge' | 'conversations' | 'assistant' | 'mcp';
 
 interface Props {
   me: Me;
@@ -27,6 +27,7 @@ export function AppHeader({ me, theme, active, onToggleTheme, onLogout, onNaviga
   }
   if (me.role === 'teacher') {
     navItems.push({ page: 'assistant', label: '智能体与技能', path: '/assistant' });
+ navItems.push({page:'mcp',label:'MCP 工具',path:'/mcp'});
   }
   return (
     <header className="app-header">

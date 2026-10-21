@@ -45,6 +45,16 @@ ORDER = [
     "api/conversations/{id}/GET.py",
     "api/conversations/{id}/messages/POST.py",
     "api/skills/{id}/DELETE.py",
+    "api/mcp/servers/POST.py",
+    "api/mcp/servers/GET.py",
+    "api/mcp/servers/{id}/PUT.py",
+    "api/mcp/servers/{id}/connect/POST.py",
+    "api/mcp/servers/{id}/tools/GET.py",
+    "api/mcp/servers/{id}/tools/approve/POST.py",
+    "api/mcp/tool-calls/GET.py",
+    "api/mcp/tool-changes/GET.py",
+    "api/mcp/servers/{id}/disconnect/POST.py",
+    "api/mcp/servers/{id}/DELETE.py",
     "api/logout/POST.py",
 ]
 
@@ -67,7 +77,7 @@ def report(rows, mode):
     parts = [
         '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>CampusClaw 接口测试报告</title>',
         "<style>body{font:16px system-ui;max-width:1100px;margin:32px auto;padding:0 16px}table{border-collapse:collapse;width:100%}td,th{padding:12px;border:1px solid #ddd;text-align:left}.PASS{color:#087443}.FAIL{color:#b42318}pre{white-space:pre-wrap}</style>",
-        "<h1>第5课接口验收</h1>",
+        "<h1>第3–6课接口验收</h1>",
         f"<p>模型环境：{html.escape(mode)}；通过 {sum(r[1] == 'PASS' for r in rows)}/{len(rows)}。模拟模型测试不等于真实模型行为验收。</p>",
         "<table><tr><th>接口脚本</th><th>结果</th><th>用时</th><th>说明</th></tr>",
     ]
@@ -104,6 +114,7 @@ def compose(keep=False, real=False):
                 "SEED_TEACHER_PASSWORD",
                 "SEED_STUDENT_PASSWORD",
                 "DIALOGUE_API_KEY",
+                "MCP_AUTH_TOKEN",
             ):
                 f.write(key + "=" + secrets.token_hex(24) + "\n")
     command = [
@@ -122,7 +133,18 @@ def compose(keep=False, real=False):
     try:
         subprocess.run(
             command
-            + ["up", "-d", "--build", "--force-recreate", "db", "model", "qdrant", "api", "web"],
+            + [
+                "up",
+                "-d",
+                "--build",
+                "--force-recreate",
+                "db",
+                "model",
+                "qdrant",
+                "mcp-demo",
+                "api",
+                "web",
+            ],
             check=True,
         )
         subprocess.run(command + ["build", "runner"], check=True)

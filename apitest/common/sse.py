@@ -36,13 +36,17 @@ def read_turn(context, cid, question, terminal="done", actor="student", override
     ) as response:
         frames = list(events(response))
     names = [e[0] for e in frames]
-    assert names[0] == "meta" and names.count("meta") == 1
+    assert names[0] == "meta"
     assert names[-1] == terminal and names.count(terminal) == 1
     assert not ({"done", "error"} - {terminal}).intersection(names)
     phase = 0
     for name, payload, _ in frames[1:]:
         if name == "delta":
-            assert phase == 0 and payload["text"]
+            phase = 1
+            assert payload["text"]
+        elif name == "meta":
+            assert phase == 0 and payload["conversation_id"] == cid
+            assert payload["assistant_message_id"] == frames[0][1]["assistant_message_id"]
         else:
             assert name == terminal
     start = frames[0][1]
@@ -98,4 +102,8 @@ def read_turn(context, cid, question, terminal="done", actor="student", override
             )
             == []
         )
+    meta_calls = [p["tool_calls"] for e, p, _ in frames if e == "meta" and "tool_calls" in p]
+    stored_calls = row.get("tool_calls_json")
+    stored_calls = json.loads(stored_calls) if isinstance(stored_calls, str) else stored_calls
+    assert (meta_calls[-1] if meta_calls else None) == stored_calls
     return text, frames, row

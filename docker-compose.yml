@@ -1,0 +1,3 @@
+# Compatibility entry point for the course hand-in; reuse the existing stack.
+include:
+  - compose.yaml

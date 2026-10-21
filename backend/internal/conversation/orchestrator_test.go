@@ -133,7 +133,7 @@ func TestOrchestratedTurnObservation(t *testing.T) {
 		if m.Role == "assistant" && m.Content == "上一答" {
 			sawHistory = true
 		}
-		if m.Role == "user" && strings.Contains(m.Content, "当前问题") && m == req.Messages[len(req.Messages)-1] {
+		if m.Role == "user" && strings.Contains(m.Content, "当前问题") && m.Role == req.Messages[len(req.Messages)-1].Role && m.Content == req.Messages[len(req.Messages)-1].Content {
 			sawQuestion = true
 		}
 	}

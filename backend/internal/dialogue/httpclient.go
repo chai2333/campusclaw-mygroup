@@ -30,12 +30,10 @@ type chatRequest struct {
 	Stream    bool          `json:"stream"`
 	MaxTokens int           `json:"max_tokens,omitempty"`
 	Messages  []chatMessage `json:"messages"`
+	Tools     []Tool        `json:"tools,omitempty"`
 }
 
-type chatMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
+type chatMessage = Message
 
 type chatStreamChunk struct {
 	Choices []struct {
@@ -143,7 +141,7 @@ func (g *HTTPGateway) Stream(ctx context.Context, req Request, onDelta func(text
 func toChatMessages(messages []Message) []chatMessage {
 	out := make([]chatMessage, 0, len(messages))
 	for _, m := range messages {
-		out = append(out, chatMessage{Role: m.Role, Content: m.Content})
+		out = append(out, m)
 	}
 	return out
 }

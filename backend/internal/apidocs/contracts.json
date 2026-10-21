@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "CampusClaw 第5课 API",
-    "version": "1.0.0",
-    "description": "教师提示词、解题引导技能、本班检索与学生流式会话。登录返回不透明 Bearer 会话令牌。"
+    "title": "CampusClaw 第3–6课 API",
+    "version": "1.1.0",
+    "description": "Bearer认证、本班知识库、多智能体流式会话、MCP服务器发现与模型工具调用审计。MCP专属令牌仅存服务端。"
   },
   "servers": [
     {
@@ -179,9 +179,7 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": [
-                "knowledge_search"
-              ]
+              "pattern": "^(knowledge_search|[a-z][a-z0-9_]{0,47}@[a-z][a-z0-9_-]{0,47})$"
             }
           },
           "source_text": {
@@ -527,6 +525,14 @@
           },
           "skill_name": {
             "type": "string"
+          },
+          "tool_calls": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MCPCall"
+            },
+            "minItems": 1,
+            "description": "仅本轮确有调用时出现；同ID的meta可在正文前多次发送，tool_calls为累计快照。"
           }
         },
         "required": [
@@ -930,6 +936,14 @@
             "items": {
               "$ref": "#/components/schemas/Citation"
             }
+          },
+          "tool_calls": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MCPCall"
+            },
+            "minItems": 1,
+            "description": "仅本轮确有调用时出现；同ID的meta可在正文前多次发送，tool_calls为累计快照。"
           }
         },
         "required": [
@@ -1034,6 +1048,339 @@
         "required": [
           "file"
         ]
+      },
+      "MCPServer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "base_url": {
+            "type": "string"
+          },
+          "connected": {
+            "type": "boolean"
+          },
+          "token_configured": {
+            "type": "boolean"
+          },
+          "last_error": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "base_url",
+          "connected",
+          "token_configured",
+          "last_error",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "MCPServers": {
+        "type": "object",
+        "properties": {
+          "servers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MCPServer"
+            }
+          }
+        },
+        "required": [
+          "servers"
+        ],
+        "additionalProperties": false
+      },
+      "MCPServerInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,47}$"
+          },
+          "base_url": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "auth_token": {
+            "type": "string",
+            "writeOnly": true,
+            "description": "可选专属令牌；省略时保留旧值。响应永不返回。",
+            "minLength": 16,
+            "maxLength": 4096
+          },
+          "use_env_token": {
+            "type": "boolean",
+            "description": "使用同网自建服务在本机.env中的MCP_AUTH_TOKEN"
+          }
+        },
+        "required": [
+          "name",
+          "base_url"
+        ],
+        "additionalProperties": false,
+        "example": {
+          "name": "campus-tools",
+          "base_url": "http://mcp-demo:8090",
+          "use_env_token": true
+        }
+      },
+      "MCPTool": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "inputSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "annotations": {
+            "type": "object",
+            "properties": {
+              "readOnlyHint": {
+                "type": "boolean"
+              },
+              "destructiveHint": {
+                "type": "boolean"
+              },
+              "openWorldHint": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "readOnlyHint",
+              "destructiveHint",
+              "openWorldHint"
+            ],
+            "additionalProperties": false
+          },
+          "approved": {
+            "type": "boolean"
+          },
+          "previous_description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "inputSchema",
+          "annotations",
+          "approved"
+        ],
+        "additionalProperties": false
+      },
+      "MCPTools": {
+        "type": "object",
+        "properties": {
+          "tools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MCPTool"
+            }
+          }
+        },
+        "required": [
+          "tools"
+        ],
+        "additionalProperties": false
+      },
+      "MCPApproval": {
+        "type": "object",
+        "properties": {
+          "names": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "names"
+        ],
+        "additionalProperties": false
+      },
+      "MCPCall": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "denied",
+              "error"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 800
+          },
+          "round": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "ref",
+          "status",
+          "text",
+          "round"
+        ],
+        "additionalProperties": false
+      },
+      "MCPAuditRow": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "denied",
+              "error"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 800
+          },
+          "round": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "id": {
+            "type": "integer"
+          },
+          "server_name": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          },
+          "conversation_id": {
+            "type": "string"
+          },
+          "assistant_message_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "latency_ms": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ref",
+          "status",
+          "text",
+          "round",
+          "id",
+          "server_name",
+          "user_id",
+          "username",
+          "conversation_id",
+          "assistant_message_id",
+          "created_at",
+          "latency_ms"
+        ],
+        "additionalProperties": false
+      },
+      "MCPAudit": {
+        "type": "object",
+        "properties": {
+          "tool_calls": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MCPAuditRow"
+            }
+          }
+        },
+        "required": [
+          "tool_calls"
+        ],
+        "additionalProperties": false
+      },
+      "MCPChange": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "server_name": {
+            "type": "string"
+          },
+          "tool_name": {
+            "type": "string"
+          },
+          "previous": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true
+          },
+          "current": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "approved_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "server_name",
+          "tool_name",
+          "previous",
+          "current",
+          "approved_at",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "MCPChanges": {
+        "type": "object",
+        "properties": {
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MCPChange"
+            }
+          }
+        },
+        "required": [
+          "changes"
+        ],
+        "additionalProperties": false
       }
     }
   }

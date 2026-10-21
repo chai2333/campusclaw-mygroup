@@ -1,6 +1,7 @@
 package tutor
 
 import (
+	"campusclaw/internal/mcp"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -254,39 +255,44 @@ func (s *Service) Skill(ctx context.Context, classID, id int64) (Skill, error) {
 	return list[0], nil
 }
 func (s *Service) SaveSkill(ctx context.Context, classID, id int64, skill Skill) (Skill, error) {
-	tools, _ := json.Marshal(skill.Tools)
-	var err error
-	if id == 0 {
-		var result sql.Result
-		result, err = s.DB.ExecContext(ctx, "INSERT INTO skills(class_id,name,trigger_text,subject_text,description,tools_json,source_text,enabled) VALUES(?,?,?,?,?,?,?,?)", classID, skill.Name, skill.TriggerText, skill.SubjectText, skill.Description, string(tools), skill.SourceText, skill.Enabled)
-		if err == nil {
-			id, err = result.LastInsertId()
-		}
-	} else {
-		tx, e := s.DB.BeginTx(ctx, nil)
-		if e != nil {
-			return Skill{}, e
-		}
-		defer tx.Rollback()
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return Skill{}, err
+	}
+	defer tx.Rollback()
+	if id > 0 {
 		var exists int64
-		e = tx.QueryRowContext(ctx, "SELECT id FROM skills WHERE id=? AND class_id=? FOR UPDATE", id, classID).Scan(&exists)
-		if errors.Is(e, sql.ErrNoRows) {
+		err = tx.QueryRowContext(ctx, "SELECT id FROM skills WHERE id=? AND class_id=? FOR UPDATE", id, classID).Scan(&exists)
+		if errors.Is(err, sql.ErrNoRows) {
 			return Skill{}, ErrNotFound
 		}
-		if e != nil {
-			return Skill{}, e
+		if err != nil {
+			return Skill{}, err
 		}
-		_, err = tx.ExecContext(ctx, "UPDATE skills SET name=?,trigger_text=?,subject_text=?,description=?,tools_json=?,source_text=?,enabled=? WHERE id=? AND class_id=?", skill.Name, skill.TriggerText, skill.SubjectText, skill.Description, string(tools), skill.SourceText, skill.Enabled, id, classID)
+	}
+	if err = mcp.ValidateRefs(ctx, tx, classID, skill.Tools); err != nil {
+		return Skill{}, err
+	}
+	tools, _ := json.Marshal(skill.Tools)
+	if id == 0 {
+		var res sql.Result
+		res, err = tx.ExecContext(ctx, "INSERT INTO skills(class_id,name,trigger_text,subject_text,description,tools_json,source_text,enabled) VALUES(?,?,?,?,?,?,?,?)", classID, skill.Name, skill.TriggerText, skill.SubjectText, skill.Description, string(tools), skill.SourceText, skill.Enabled)
 		if err == nil {
-			err = tx.Commit()
+			id, err = res.LastInsertId()
 		}
+	} else {
+		_, err = tx.ExecContext(ctx, "UPDATE skills SET name=?,trigger_text=?,subject_text=?,description=?,tools_json=?,source_text=?,enabled=? WHERE id=? AND class_id=?", skill.Name, skill.TriggerText, skill.SubjectText, skill.Description, string(tools), skill.SourceText, skill.Enabled, id, classID)
 	}
 	if err != nil {
 		return Skill{}, classify(err)
 	}
+	if err = tx.Commit(); err != nil {
+		return Skill{}, err
+	}
 	skill.ID = id
 	return skill, nil
 }
+
 func (s *Service) DeleteSkill(ctx context.Context, classID, id int64) error {
 	result, err := s.DB.ExecContext(ctx, "DELETE FROM skills WHERE id=? AND class_id=?", id, classID)
 	if err != nil {

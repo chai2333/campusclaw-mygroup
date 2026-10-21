@@ -13,3 +13,6 @@
 `APITEST_PROVIDER=mock` 仅用于随仓库提供的模拟服务；真实模型环境应为 `real`。模拟服务会故意响应失败、违规答案和非法引用以覆盖终止状态，这些触发器仅存在于独立测试服务，不进入产品 API。
 
 新版消息协议为meta → delta → done/error。meta先返回技能与候选引用；会话创建必须选择agent_id。专项真实数学/语文与注入验收见accept_real.py，回答证据写入reports/real-model.json。
+
+
+第6课新增10个MCP接口脚本（总计41个）。独立Compose实际启动mcp-demo，覆盖独立协议、登记/修改、握手缓存替换、技能保存校验、模型两轮调用、参数错误/注入/上限、断开/删除后的denied及审计数据库一致性。完整说明变更与重新确认另由真实MySQL/HTTP后端测试覆盖。真实模型模式不伪造固定决策，报告保留模型是否实际调用的验收结果。`mcp-server/test_server.py`可单独执行，不进入生产镜像。

@@ -114,7 +114,7 @@ func main() {
 				}
 				r := response("成功", parts[1])
 				if parts[1] == "Stream" {
-					r = record{"description": "meta → delta* → done/error；meta含候选引用和技能，done只在提交后发送。流开始前失败使用JSON状态码，之后使用error事件。", "content": record{"text/event-stream": record{"schema": record{"type": "string"}, "example": "event: meta\ndata: {\"status\":\"ok\",\"skill\":null,\"citations\":[],\"conversation_id\":\"c\",\"user_message_id\":\"u\",\"assistant_message_id\":\"a\"}\n\nevent: delta\ndata: {\"text\":\"下一步提示\"}\n\nevent: done\ndata: {\"assistant_message_id\":\"a\",\"status\":\"completed\",\"citations\":[]}\n\n"}}}
+					r = record{"description": "meta → meta(工具调用累计快照)* → delta* → done/error；无调用时省略tool_calls，meta重复时ID/技能/引用保持一致且均在首字前，done只在提交后发送。流开始前失败使用JSON状态码，之后使用error事件。", "content": record{"text/event-stream": record{"schema": record{"type": "string"}, "example": "event: meta\ndata: {\"status\":\"ok\",\"skill\":null,\"citations\":[],\"conversation_id\":\"c\",\"user_message_id\":\"u\",\"assistant_message_id\":\"a\"}\n\nevent: delta\ndata: {\"text\":\"下一步提示\"}\n\nevent: done\ndata: {\"assistant_message_id\":\"a\",\"status\":\"completed\",\"citations\":[]}\n\n"}}}
 					op["x-sse-events"] = record{"meta": ref("StreamMeta"), "delta": ref("StreamDelta"), "done": ref("StreamDone"), "error": ref("StreamError")}
 				} else if parts[1] == "Binary" {
 					r = record{"description": "下载文件", "content": record{"application/octet-stream": record{"schema": record{"type": "string", "format": "binary"}}}}

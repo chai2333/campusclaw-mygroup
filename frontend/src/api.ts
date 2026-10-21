@@ -1,3 +1,4 @@
+import type {MCPCall} from './sse';
 // API client for the CampusClaw backend. The opaque access token is scoped to
 // the current browser tab and sent on protected requests as a Bearer token.
 
@@ -370,6 +371,7 @@ export interface Citation {
 export type MessageStatus = 'completed' | 'failed' | 'cancelled' | 'streaming';
 
 export interface ConversationMessage {
+ tool_calls?: MCPCall[];
   skill_name?: string;
   id: string;
   sequence_no: number;
@@ -449,3 +451,17 @@ export const saveAgent=(input:TutorAgentInput,id?:number):Promise<TutorAgent>=>r
 export const fetchSkills=():Promise<TutorSkill[]>=>request<{skills:TutorSkill[]}>('/api/skills').then(x=>x.skills);
 export const saveSkillFile=(sourceText:string,id?:number):Promise<TutorSkill>=>request<TutorSkill>(id?`/api/skills/${id}`:'/api/skills',{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source_text:sourceText})});
 export const deleteSkill=(id:number):Promise<{status:string}>=>request(`/api/skills/${id}`,{method:'DELETE'});
+
+export interface MCPServer {id:number;name:string;base_url:string;connected:boolean;token_configured:boolean;last_error:string;version:number}
+export interface MCPTool {name:string;description:string;inputSchema:Record<string,unknown>;annotations:{readOnlyHint:boolean;destructiveHint:boolean;openWorldHint:boolean};approved:boolean;previous_description?:string}
+export type {MCPCall} from './sse';
+export interface MCPAudit extends MCPCall {id:number;server_name:string;user_id:number;username:string;conversation_id:string;assistant_message_id:string;created_at:string;latency_ms:number}
+export interface MCPChange {id:number;server_name:string;tool_name:string;previous:MCPTool|null;current:MCPTool;approved_at:string|null;created_at:string}
+export async function fetchMCPServers(){return (await request<{servers:MCPServer[]}>('/api/mcp/servers')).servers;}
+export async function fetchMCPTools(id:number){return (await request<{tools:MCPTool[]}>(`/api/mcp/servers/${id}/tools`)).tools;}
+export async function fetchMCPAudit(){return (await request<{tool_calls:MCPAudit[]}>('/api/mcp/tool-calls')).tool_calls;}
+export async function fetchMCPChanges(){return (await request<{changes:MCPChange[]}>('/api/mcp/tool-changes')).changes;}
+export function saveMCPServer(input:{name:string;base_url:string;auth_token?:string;use_env_token?:boolean},id?:number){return request<MCPServer>(`/api/mcp/servers${id?`/${id}`:''}`,{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});}
+export function mcpAction(id:number,action:'connect'|'disconnect'){return request<MCPServer|{status:string}>(`/api/mcp/servers/${id}/${action}`,{method:'POST'});}
+export function approveMCPTool(id:number,name:string){return request(`/api/mcp/servers/${id}/tools/approve`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({names:[name]})});}
+export function deleteMCPServer(id:number){return request(`/api/mcp/servers/${id}`,{method:'DELETE'});}

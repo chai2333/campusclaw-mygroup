@@ -101,24 +101,31 @@ func (s *Service) PostMessage(w http.ResponseWriter, r *http.Request) {
 	var assistantMessageID string
 	outcome, err := s.Orch.Run(r.Context(), s, conversationID, user.ID, *user.ClassID, question,
 		func(turn Turn) error {
-			sw, err := beginStream(w)
-			if err != nil {
-				return err
+			if stream == nil {
+				var err error
+				stream, err = beginStream(w)
+				if err != nil {
+					return err
+				}
 			}
-			stream = sw
+			sw := stream
 			assistantMessageID = turn.AssistantMessageID
 			var skill any
 			if turn.Skill != nil {
 				skill = map[string]any{"id": turn.Skill.ID, "name": turn.Skill.Name}
 			}
-			return sw.send("meta", map[string]any{
+			payload := map[string]any{
 				"status":               "ok",
 				"skill":                skill,
 				"citations":            turn.Citations,
 				"conversation_id":      turn.ConversationID,
 				"user_message_id":      turn.UserMessageID,
 				"assistant_message_id": turn.AssistantMessageID,
-			})
+			}
+			if len(turn.ToolCalls) > 0 {
+				payload["tool_calls"] = turn.ToolCalls
+			}
+			return sw.send("meta", payload)
 		},
 		func(delta string) error {
 			if stream == nil {

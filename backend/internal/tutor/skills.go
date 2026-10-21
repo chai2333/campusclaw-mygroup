@@ -1,6 +1,7 @@
 package tutor
 
 import (
+	"campusclaw/internal/mcp"
 	"encoding/json"
 	"errors"
 	"regexp"
@@ -90,10 +91,24 @@ func ParseSkill(source string) (Skill, error) {
 		for _, tool := range separators.Split(fields["工具"], -1) {
 			tool = strings.TrimSpace(tool)
 			if tool != "knowledge_search" {
-				return s, errors.New("只允许knowledge_search工具")
+				_, _, ok := mcp.ParseRef(tool)
+				if !ok {
+					return s, errors.New("工具须为knowledge_search或小写工具名@服务器名，工具名不含连字符")
+				}
+			}
+			exists := false
+			for _, v := range s.Tools {
+				if v == tool {
+					exists = true
+				}
+			}
+			if !exists {
+				s.Tools = append(s.Tools, tool)
 			}
 		}
-		s.Tools = []string{"knowledge_search"}
+	}
+	if len(s.Tools) > 16 {
+		return s, errors.New("一个技能最多绑定16个工具")
 	}
 	if len(triggerWords(s.TriggerText)) == 0 {
 		return s, errors.New("适用条件至少包含一个非空关键词")

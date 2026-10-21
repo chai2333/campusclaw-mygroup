@@ -111,6 +111,9 @@ class Context:
 
             canonical = path.split("?")[0]
             canonical = __import__("re").sub(
+                r"/api/mcp/servers/[^/]+", "/api/mcp/servers/{id}", canonical
+            )
+            canonical = __import__("re").sub(
                 r"/api/materials/[^/]+", "/api/materials/{id}", canonical
             )
             canonical = __import__("re").sub(
@@ -195,6 +198,8 @@ class Context:
     def cleanup(self):
         # Only this run's classes/users; no existing class or settings are touched.
         for cid in self.classes.values():
+            self.execute("DELETE FROM mcp_tool_changes WHERE class_id=%s", (cid,))
+            self.execute("DELETE FROM mcp_servers WHERE class_id=%s", (cid,))
             self.execute("DELETE FROM conversations WHERE class_id=%s", (cid,))
             self.execute("DELETE FROM tutor_agents WHERE class_id=%s", (cid,))
             self.execute("DELETE FROM skills WHERE class_id=%s", (cid,))

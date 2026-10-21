@@ -40,8 +40,66 @@ class Handler(BaseHTTPRequestHandler):
             return
         payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         messages = payload["messages"]
+        if not payload.get("stream", False):
+            tool_messages = [m for m in messages if m["role"] == "tool"]
+            question = next(
+                (
+                    m["content"]
+                    for m in reversed(messages)
+                    if "【本次提问】" in m.get("content", "")
+                ),
+                "",
+            )
+            available = payload.get("tools", [])
+            repeat = "MCP_LOOP" in question
+            required = 2 if "MCP_TWO_STEP" in question else 1
+            calls = []
+            if available and (repeat or len(tool_messages) < required):
+                suffix = "unit_convert" if required == 2 and not tool_messages else "formula_hint"
+                chosen = next(
+                    (t for t in available if t["function"]["name"].endswith(suffix)), available[0]
+                )
+                args = (
+                    {"from_unit": "km", "to_unit": "m"}
+                    if suffix == "unit_convert"
+                    else {
+                        "query": question.split("【本次提问】\n")[-1].split("\n\n【资料依据")[0][
+                            :500
+                        ]
+                    }
+                )
+                if "MCP_BAD_ARGS" in question:
+                    args = {"query": 12}
+                calls = [
+                    {
+                        "id": "call_" + str(len(tool_messages) + 1),
+                        "type": "function",
+                        "function": {
+                            "name": "not_a_candidate"
+                            if "MCP_UNAUTHORIZED" in question
+                            else chosen["function"]["name"],
+                            "arguments": json.dumps(args, ensure_ascii=False),
+                        },
+                    }
+                ]
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(
+                json.dumps(
+                    {
+                        "choices": [
+                            {"message": {"role": "assistant", "content": "", "tool_calls": calls}}
+                        ]
+                    }
+                ).encode()
+            )
+            return
         system = messages[0]["content"]
-        question = messages[-1]["content"]
+        question = next(
+            (m["content"] for m in reversed(messages) if "【本次提问】" in m.get("content", "")),
+            messages[-1]["content"],
+        )
         current = question
         if "【本次提问】" in question:
             current = question.split("【本次提问】\n", 1)[1].split("\n\n【资料依据", 1)[0]
@@ -82,6 +140,13 @@ class Handler(BaseHTTPRequestHandler):
         else:
             evidence = json.loads(question)["evidence"][0]
             text = evidence["text"] + " [1]"
+        tool_results = [m["content"] for m in messages if m["role"] == "tool"]
+        if tool_results:
+            text = (
+                "工具提示："
+                + "；".join(m.split("\n", 1)[-1] for m in tool_results)
+                + "。请你自己完成最后计算。"
+            )
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-store")

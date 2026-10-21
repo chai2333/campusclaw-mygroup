@@ -53,3 +53,17 @@ test('stop aborts stream after meta',async()=>{
  const controller=new AbortController();
  try{await assert.rejects(()=>streamAssistantAnswer({baseUrl:h.url,conversationId:'c1',question:'问题',token:'t',signal:controller.signal,onEvent:e=>{if(e.type==='meta')controller.abort();}}),err=>err instanceof DOMException&&err.name==='AbortError');}finally{await h.close();}
 });
+
+test('cumulative tool metas precede text and preserve rounds',async()=>{
+ const c1={ref:'formula_hint@campus-tools',status:'ok',text:'先看公式',round:1};
+ const c2={ref:'unit_convert@campus-tools',status:'denied',text:'未连接',round:2};
+ const r=await run(frame('meta',meta)+frame('meta',{...meta,tool_calls:[c1]})+frame('meta',{...meta,tool_calls:[c1,c2]})+frame('delta',{text:'请你继续'})+frame('done',done),1);
+ assert.equal(r.terminal.status,'completed');assert.deepEqual(r.events.map(e=>e.type),['meta','meta','meta','delta']);
+ const last=r.events[2];assert.equal(last.type,'meta');if(last.type==='meta')assert.deepEqual(last.tool_calls,[c1,c2]);
+});
+for(const [name,raw] of [
+ ['tool meta after prose',frame('meta',meta)+frame('delta',{text:'x'})+frame('meta',{...meta,tool_calls:[{ref:'x@y',status:'ok',text:'x',round:1}]})],
+ ['empty tool calls',frame('meta',{...meta,tool_calls:[]})],
+ ['invalid tool status',frame('meta',{...meta,tool_calls:[{ref:'x@y',status:'success',text:'x',round:1}]})],
+ ['tool meta changes identity',frame('meta',meta)+frame('meta',{...meta,assistant_message_id:'other',tool_calls:[{ref:'x@y',status:'ok',text:'x',round:1}]})],
+] as const){test(name,async()=>{await assert.rejects(run(raw),(e:unknown)=>e instanceof StreamError&&e.code==='protocol_error');});}

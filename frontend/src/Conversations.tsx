@@ -12,6 +12,7 @@ import {
   fetchMaterial,
   getAccessToken,
   type Citation,
+ type MCPCall,
   type Conversation,
   type ConversationMessage,
   type Me,
@@ -44,6 +45,7 @@ interface ChatEntry {
   errorCode?: string;
   citations?: Citation[];
   skillName?: string;
+ toolCalls?: MCPCall[];
 }
 
 interface TurnError {
@@ -249,7 +251,7 @@ export function Conversations({
           signal: controller.signal,
           onEvent: (e) => {
             if (e.type === 'meta') {
-              patchEntry(assistantLocalId, { id: e.assistant_message_id, citations:e.citations, skillName:e.skill?.name });
+              patchEntry(assistantLocalId, { id: e.assistant_message_id, citations:e.citations, skillName:e.skill?.name,toolCalls:e.tool_calls });
             } else if (e.type === 'delta') {
               appendDelta(assistantLocalId, e.text);
 
@@ -548,7 +550,7 @@ export function Conversations({
 }
 
 function toEntry(m: ConversationMessage): ChatEntry {
-  return { localId: m.id, id: m.id, role: m.role, content: m.content, status: m.status, errorCode: m.error_code, citations: m.citations, skillName:m.skill_name };
+  return { localId: m.id, id: m.id, role: m.role, content: m.content, status: m.status, errorCode: m.error_code, citations: m.citations, skillName:m.skill_name,toolCalls:m.tool_calls };
 }
 
 function MessageBubble({
@@ -566,6 +568,7 @@ function MessageBubble({
     <div className={`msg msg-${entry.role}`}>
       <div className={`msg-bubble${entry.status === 'failed' ? ' failed' : ''}`}>
         {entry.role==='assistant'&&entry.skillName&&<p className="msg-skill">本轮技能：{entry.skillName}</p>}
+        {entry.role==='assistant'&&entry.toolCalls?.map((call,i)=><div className="mcp-call" key={`${i}-${call.ref}`}><strong>{call.ref}</strong> · 第{call.round}轮 · {({ok:'成功',denied:'被拒',error:'出错'})[call.status]}<p>{call.text}</p></div>)}
         {entry.role === 'assistant' ? (
           <div className="markdown">
             <Markdown remarkPlugins={[remarkGfm]} urlTransform={sanitizeUrl} skipHtml>

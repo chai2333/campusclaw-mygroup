@@ -2003,3 +2003,12 @@ a:hover {
 .agent-context {padding:0 16px;}
 .msg-skill {font-size:.8rem;font-weight:600;margin:0 0 8px;}
 @media(max-width:700px){.config-grid{grid-template-columns:minmax(0,1fr);}.config-page{padding:16px;}.config-list{max-height:260px;overflow-y:auto;}.config-editor{padding:14px;}}
+
+.mcp-section { margin-top: 2rem; }
+.mcp-section .config-editor { margin: 1rem 0; }
+.mcp-json { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; font-size: .85rem; padding: 1rem; background: var(--bg-subtle); border-radius: 8px; }
+.mcp-table { overflow-x: auto; max-width: 100%; }
+.mcp-table table { width: 100%; border-collapse: collapse; font-size: .85rem; min-width: 580px; }
+.mcp-table th, .mcp-table td { text-align: left; vertical-align: top; padding: .8rem; border-bottom: 1px solid var(--border); max-width: 340px; overflow-wrap: anywhere; }
+.mcp-call { margin: .6rem 0; padding: .7rem; border: 1px solid var(--border); border-radius: 8px; font-size: .85rem; overflow-wrap: anywhere; }
+.mcp-call p { margin: .35rem 0 0; white-space: pre-wrap; }

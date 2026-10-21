@@ -154,6 +154,7 @@ CREATE TABLE IF NOT EXISTS conversation_messages (
  status VARCHAR(16) NOT NULL DEFAULT 'streaming',
  skill_id BIGINT NULL,
  skill_name VARCHAR(32) NULL,
+ tool_calls_json JSON NULL,
  prompt_version INT NULL,
  skill_enabled TINYINT(1) NULL,
  model VARCHAR(128) NULL,
@@ -181,4 +182,65 @@ CREATE TABLE IF NOT EXISTS message_citations (
  CONSTRAINT citation_ordinal_valid CHECK (ordinal >= 1 AND ordinal <= 4),
  CONSTRAINT citation_char_range CHECK (char_start >= 0 AND char_end >= char_start AND chunk_index >= 0),
  FOREIGN KEY (assistant_message_id) REFERENCES conversation_messages(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS mcp_servers (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT,
+ class_id BIGINT NOT NULL,
+ name VARCHAR(48) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ base_url VARCHAR(512) NOT NULL,
+ token_cipher TEXT NOT NULL,
+ connected TINYINT(1) NOT NULL DEFAULT 0,
+ version BIGINT NOT NULL DEFAULT 1,
+ last_error VARCHAR(200) NOT NULL DEFAULT '',
+ last_tools_json JSON NULL,
+ created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+ UNIQUE KEY mcp_class_name(class_id,name),
+ UNIQUE KEY mcp_id_class(id,class_id),
+ FOREIGN KEY(class_id) REFERENCES classes(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS mcp_tools (
+ server_id BIGINT NOT NULL,
+ class_id BIGINT NOT NULL,
+ name VARCHAR(48) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ definition_json JSON NOT NULL,
+ approved TINYINT(1) NOT NULL DEFAULT 0,
+ PRIMARY KEY(server_id,name),
+ FOREIGN KEY(server_id,class_id) REFERENCES mcp_servers(id,class_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS mcp_tool_changes (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT,
+ server_id BIGINT NULL,
+ class_id BIGINT NOT NULL,
+ server_name VARCHAR(48) NOT NULL,
+ tool_name VARCHAR(48) NOT NULL,
+ previous_json JSON NULL,
+ current_json JSON NOT NULL,
+ approved_at DATETIME(6) NULL,
+ created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+ FOREIGN KEY(server_id) REFERENCES mcp_servers(id) ON DELETE SET NULL,
+ FOREIGN KEY(class_id) REFERENCES classes(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS mcp_tool_calls (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT,
+ server_id BIGINT NULL,
+ class_id BIGINT NOT NULL,
+ server_name VARCHAR(48) NOT NULL,
+ tool_name VARCHAR(48) NOT NULL,
+ tool_ref VARCHAR(100) NOT NULL,
+ status VARCHAR(16) NOT NULL,
+ user_id BIGINT NOT NULL,
+ conversation_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ assistant_message_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ round_no INT NOT NULL,
+ text VARCHAR(800) NOT NULL,
+ latency_ms BIGINT NOT NULL,
+ created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+ INDEX mcp_calls_class(class_id,id),
+ INDEX mcp_calls_conversation(conversation_id),
+ FOREIGN KEY(server_id) REFERENCES mcp_servers(id) ON DELETE SET NULL,
+ FOREIGN KEY(class_id) REFERENCES classes(id),
+ FOREIGN KEY(user_id) REFERENCES users(id),
+ FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+ FOREIGN KEY(assistant_message_id) REFERENCES conversation_messages(id) ON DELETE CASCADE,
+ CONSTRAINT mcp_status_valid CHECK(status IN ('ok','denied','error'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

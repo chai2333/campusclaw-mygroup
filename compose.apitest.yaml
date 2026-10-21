@@ -1,5 +1,16 @@
 # Separate project, network and disposable volumes; never overlays compose.yaml.
 services:
+  mcp-demo:
+    build: ./mcp-server
+    environment:
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:?required}
+      MCP_TEST_MODE: "1"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health',timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
   db:
     image: mysql:8.0
     environment:
@@ -26,6 +37,12 @@ services:
     build: ./backend
     environment:
       APP_ENV: development
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:?required}
+      MCP_DEFAULT_BASE_URL: ${MCP_DEFAULT_BASE_URL:-http://mcp-demo:8090}
+      MCP_ALLOWED_BASE_URLS: ${MCP_ALLOWED_BASE_URLS:-http://mcp-demo:8090}
+      MCP_MAX_ROUNDS: ${MCP_MAX_ROUNDS:-3}
+      MCP_MAX_TURN_CALLS: ${MCP_MAX_TURN_CALLS:-6}
+      MCP_MAX_CONVERSATION_CALLS: ${MCP_MAX_CONVERSATION_CALLS:-12}
       SESSION_SECRET: ${SESSION_SECRET:?required}
       DB_HOST: db
       DB_PORT: 3306
@@ -71,9 +88,16 @@ services:
       APITEST_DB_NAME: campusclaw_apitest
       APITEST_DB_USER: campusclaw
       APITEST_DB_PASSWORD: ${DB_PASSWORD:?required}
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:?required}
+      MCP_DEFAULT_BASE_URL: ${MCP_DEFAULT_BASE_URL:-http://mcp-demo:8090}
+      MCP_ALLOWED_BASE_URLS: ${MCP_ALLOWED_BASE_URLS:-http://mcp-demo:8090}
+      MCP_MAX_ROUNDS: ${MCP_MAX_ROUNDS:-3}
+      MCP_MAX_TURN_CALLS: ${MCP_MAX_TURN_CALLS:-6}
+      MCP_MAX_CONVERSATION_CALLS: ${MCP_MAX_CONVERSATION_CALLS:-12}
       SESSION_SECRET: ${SESSION_SECRET:?required}
       SEED_TEACHER_PASSWORD: ${SEED_TEACHER_PASSWORD:?required}
       SEED_STUDENT_PASSWORD: ${SEED_STUDENT_PASSWORD:?required}
+      APITEST_MCP_BASE_URL: http://mcp-demo:8090
       APITEST_PROVIDER: mock
     volumes:
       - ./apitest/reports:/work/apitest/reports

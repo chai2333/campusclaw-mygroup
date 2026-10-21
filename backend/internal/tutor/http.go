@@ -1,6 +1,7 @@
 package tutor
 
 import (
+	"campusclaw/internal/mcp"
 	"encoding/json"
 	"errors"
 	"io"
@@ -13,7 +14,10 @@ import (
 
 func idOf(r *http.Request) int64 { id, _ := strconv.ParseInt(r.PathValue("id"), 10, 64); return id }
 func fail(w http.ResponseWriter, err error) {
+	var input mcp.InputError
 	switch {
+	case errors.As(err, &input):
+		auth.JSON(w, 400, map[string]string{"error": "invalid_skill", "message": input.Error()})
 	case errors.Is(err, ErrNotFound):
 		auth.Error(w, 404, "not_found")
 	case errors.Is(err, ErrInvalid):

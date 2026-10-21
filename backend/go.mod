@@ -4,6 +4,7 @@ go 1.26.1
 
 require (
 	github.com/go-sql-driver/mysql v1.9.3
+	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	golang.org/x/crypto v0.48.0
 	modernc.org/sqlite v1.59.0
 )

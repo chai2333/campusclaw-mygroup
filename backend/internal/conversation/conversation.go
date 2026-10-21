@@ -4,10 +4,12 @@
 package conversation
 
 import (
+	"campusclaw/internal/mcp"
 	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -58,6 +60,7 @@ type Citation struct {
 }
 
 type Message struct {
+	ToolCalls   []mcp.Call `json:"tool_calls,omitempty"`
 	SkillName   string     `json:"skill_name,omitempty"`
 	ID          string     `json:"id"`
 	SequenceNo  int        `json:"sequence_no"`
@@ -71,6 +74,7 @@ type Message struct {
 }
 
 type Turn struct {
+	ToolCalls          []mcp.Call
 	Citations          []Citation
 	AgentID            int64
 	Skill              *tutor.Skill
@@ -196,7 +200,7 @@ func (s *Service) LoadDetail(ctx context.Context, id string, ownerID, classID in
 		return Conversation{}, nil, err
 	}
 	rows, err := s.DB.QueryContext(ctx,
-		"SELECT id,sequence_no,role,content,status,error_code,created_at,completed_at,COALESCE(skill_name,'') FROM conversation_messages WHERE conversation_id=? ORDER BY sequence_no",
+		"SELECT id,sequence_no,role,content,status,error_code,created_at,completed_at,COALESCE(skill_name,''),COALESCE(tool_calls_json,'[]') FROM conversation_messages WHERE conversation_id=? ORDER BY sequence_no",
 		id,
 	)
 	if err != nil {
@@ -206,12 +210,14 @@ func (s *Service) LoadDetail(ctx context.Context, id string, ownerID, classID in
 	messages := []Message{}
 	for rows.Next() {
 		var m Message
+		var toolCallsRaw string
 		var errorCode sql.NullString
 		var completed sql.NullTime
 		var created time.Time
-		if err := rows.Scan(&m.ID, &m.SequenceNo, &m.Role, &m.Content, &m.Status, &errorCode, &created, &completed, &m.SkillName); err != nil {
+		if err := rows.Scan(&m.ID, &m.SequenceNo, &m.Role, &m.Content, &m.Status, &errorCode, &created, &completed, &m.SkillName, &toolCallsRaw); err != nil {
 			return Conversation{}, nil, err
 		}
+		_ = json.Unmarshal([]byte(toolCallsRaw), &m.ToolCalls)
 		m.ErrorCode = errorCode.String
 		m.CreatedAt = created.Format(time.RFC3339)
 		if completed.Valid {

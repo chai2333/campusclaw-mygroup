@@ -7,6 +7,7 @@ import {
   logout as apiLogout,
   type Me,
 } from './api';
+import { MCPSettings } from './MCPSettings';
 import { AssistantSettings } from './AssistantSettings';
 import { Conversations } from './Conversations';
 import { CommandPalette, type Command } from './CommandPalette';
@@ -25,6 +26,7 @@ type AppRoute =
   | { name: 'materials' }
 	| { name: 'knowledge' }
   | { name: 'assistant' }
+ | {name:'mcp'}
   | { name: 'conversations'; conversationId: string | null };
 
 const THEME_KEY = 'campusclaw-theme';
@@ -67,7 +69,8 @@ function currentPath(): string {
 function parseRoute(path: string): AppRoute {
   if (path === '/materials' || path === '/') return { name: 'materials' };
 	if (path === '/knowledge') return { name: 'knowledge' };
-  if (path === '/assistant') return { name: 'assistant' };
+  if (path === '/mcp') return {name:'mcp'};
+ if (path === '/assistant') return { name: 'assistant' };
   if (path === '/conversations') return { name: 'conversations', conversationId: null };
   const match = /^\/conversations\/([^/]+)$/.exec(path);
   if (match) return { name: 'conversations', conversationId: decodeURIComponent(match[1]) };
@@ -76,7 +79,8 @@ function parseRoute(path: string): AppRoute {
 
 function pathForRoute(route: AppRoute): string {
   switch (route.name) {
-    case 'assistant':
+    case 'mcp':return '/mcp';
+ case 'assistant':
       return '/assistant';
 	case 'knowledge':
 		return '/knowledge';
@@ -169,7 +173,7 @@ export function App() {
       pushPath('/conversations');
       setRoute({ name: 'conversations', conversationId: null });
     }
-    if (me.role === 'student' && route.name === 'assistant') {
+    if (me.role === 'student' && (route.name === 'assistant'||route.name === 'mcp')) {
       pushPath('/materials');
       setRoute({ name: 'materials' });
     }
@@ -304,7 +308,9 @@ export function App() {
     );
   } else if (route.name === 'login' || !me) {
     content = <Login onLogin={handleLogin} />;
-  } else if (route.name === 'assistant' && me.role === 'teacher') {
+  } else if (route.name === 'mcp' && me.role === 'teacher') {
+ content=<MCPSettings me={me} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout} onNavigate={navigate} onUnauthorized={onUnauthorized}/>;
+ } else if (route.name === 'assistant' && me.role === 'teacher') {
     content = (
       <AssistantSettings
         me={me}

@@ -421,6 +421,339 @@
         ],
         "type": "object"
       },
+      "MCPApproval": {
+        "additionalProperties": false,
+        "properties": {
+          "names": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 64,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "names"
+        ],
+        "type": "object"
+      },
+      "MCPAudit": {
+        "additionalProperties": false,
+        "properties": {
+          "tool_calls": {
+            "items": {
+              "$ref": "#/components/schemas/MCPAuditRow"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "tool_calls"
+        ],
+        "type": "object"
+      },
+      "MCPAuditRow": {
+        "additionalProperties": false,
+        "properties": {
+          "assistant_message_id": {
+            "type": "string"
+          },
+          "conversation_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "latency_ms": {
+            "type": "integer"
+          },
+          "ref": {
+            "type": "string"
+          },
+          "round": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "server_name": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "denied",
+              "error"
+            ],
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 800,
+            "type": "string"
+          },
+          "user_id": {
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref",
+          "status",
+          "text",
+          "round",
+          "id",
+          "server_name",
+          "user_id",
+          "username",
+          "conversation_id",
+          "assistant_message_id",
+          "created_at",
+          "latency_ms"
+        ],
+        "type": "object"
+      },
+      "MCPCall": {
+        "additionalProperties": false,
+        "properties": {
+          "ref": {
+            "type": "string"
+          },
+          "round": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "denied",
+              "error"
+            ],
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 800,
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref",
+          "status",
+          "text",
+          "round"
+        ],
+        "type": "object"
+      },
+      "MCPChange": {
+        "additionalProperties": false,
+        "properties": {
+          "approved_at": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "current": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "previous": {
+            "additionalProperties": true,
+            "nullable": true,
+            "type": "object"
+          },
+          "server_name": {
+            "type": "string"
+          },
+          "tool_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "server_name",
+          "tool_name",
+          "previous",
+          "current",
+          "approved_at",
+          "created_at"
+        ],
+        "type": "object"
+      },
+      "MCPChanges": {
+        "additionalProperties": false,
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/MCPChange"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "changes"
+        ],
+        "type": "object"
+      },
+      "MCPServer": {
+        "additionalProperties": false,
+        "properties": {
+          "base_url": {
+            "type": "string"
+          },
+          "connected": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "last_error": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "token_configured": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "base_url",
+          "connected",
+          "token_configured",
+          "last_error",
+          "version"
+        ],
+        "type": "object"
+      },
+      "MCPServerInput": {
+        "additionalProperties": false,
+        "example": {
+          "base_url": "http://mcp-demo:8090",
+          "name": "campus-tools",
+          "use_env_token": true
+        },
+        "properties": {
+          "auth_token": {
+            "description": "可选专属令牌；省略时保留旧值。响应永不返回。",
+            "maxLength": 4096,
+            "minLength": 16,
+            "type": "string",
+            "writeOnly": true
+          },
+          "base_url": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "name": {
+            "pattern": "^[a-z][a-z0-9_-]{0,47}$",
+            "type": "string"
+          },
+          "use_env_token": {
+            "description": "使用同网自建服务在本机.env中的MCP_AUTH_TOKEN",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "base_url"
+        ],
+        "type": "object"
+      },
+      "MCPServers": {
+        "additionalProperties": false,
+        "properties": {
+          "servers": {
+            "items": {
+              "$ref": "#/components/schemas/MCPServer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "servers"
+        ],
+        "type": "object"
+      },
+      "MCPTool": {
+        "additionalProperties": false,
+        "properties": {
+          "annotations": {
+            "additionalProperties": false,
+            "properties": {
+              "destructiveHint": {
+                "type": "boolean"
+              },
+              "openWorldHint": {
+                "type": "boolean"
+              },
+              "readOnlyHint": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "readOnlyHint",
+              "destructiveHint",
+              "openWorldHint"
+            ],
+            "type": "object"
+          },
+          "approved": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "inputSchema": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "name": {
+            "type": "string"
+          },
+          "previous_description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "inputSchema",
+          "annotations",
+          "approved"
+        ],
+        "type": "object"
+      },
+      "MCPTools": {
+        "additionalProperties": false,
+        "properties": {
+          "tools": {
+            "items": {
+              "$ref": "#/components/schemas/MCPTool"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "tools"
+        ],
+        "type": "object"
+      },
       "Material": {
         "properties": {
           "class_id": {
@@ -526,6 +859,14 @@
               "cancelled"
             ],
             "type": "string"
+          },
+          "tool_calls": {
+            "description": "仅本轮确有调用时出现；同ID的meta可在正文前多次发送，tool_calls为累计快照。",
+            "items": {
+              "$ref": "#/components/schemas/MCPCall"
+            },
+            "minItems": 1,
+            "type": "array"
           }
         },
         "required": [
@@ -744,9 +1085,7 @@
           },
           "tools": {
             "items": {
-              "enum": [
-                "knowledge_search"
-              ],
+              "pattern": "^(knowledge_search|[a-z][a-z0-9_]{0,47}@[a-z][a-z0-9_-]{0,47})$",
               "type": "string"
             },
             "type": "array"
@@ -903,6 +1242,14 @@
             ],
             "type": "string"
           },
+          "tool_calls": {
+            "description": "仅本轮确有调用时出现；同ID的meta可在正文前多次发送，tool_calls为累计快照。",
+            "items": {
+              "$ref": "#/components/schemas/MCPCall"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
           "user_message_id": {
             "type": "string"
           }
@@ -1021,9 +1368,9 @@
     }
   },
   "info": {
-    "description": "教师提示词、解题引导技能、本班检索与学生流式会话。登录返回不透明 Bearer 会话令牌。",
-    "title": "CampusClaw 第5课 API",
-    "version": "1.0.0"
+    "description": "Bearer认证、本班知识库、多智能体流式会话、MCP服务器发现与模型工具调用审计。MCP专属令牌仅存服务端。",
+    "title": "CampusClaw 第3–6课 API",
+    "version": "1.1.0"
   },
   "openapi": "3.0.3",
   "paths": {
@@ -1895,7 +2242,7 @@
                 }
               }
             },
-            "description": "meta → delta* → done/error；meta含候选引用和技能，done只在提交后发送。流开始前失败使用JSON状态码，之后使用error事件。"
+            "description": "meta → meta(工具调用累计快照)* → delta* → done/error；无调用时省略tool_calls，meta重复时ID/技能/引用保持一致且均在首字前，done只在提交后发送。流开始前失败使用JSON状态码，之后使用error事件。"
           },
           "400": {
             "content": {
@@ -2498,6 +2845,738 @@
         "summary": "重建本班材料索引",
         "tags": [
           "materials"
+        ],
+        "x-role": "teacher"
+      }
+    },
+    "/api/mcp/servers": {
+      "get": {
+        "description": "权限：teacher。 列出本班MCP服务器，只返回令牌配置布尔值",
+        "operationId": "get__api_mcp_servers",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MCPServers"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "列出本班MCP服务器，只返回令牌配置布尔值",
+        "tags": [
+          "mcp"
+        ],
+        "x-role": "teacher"
+      },
+      "post": {
+        "description": "权限：teacher。 登记本班MCP服务器（同网服务可使用环境令牌）",
+        "operationId": "post__api_mcp_servers",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MCPServerInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MCPServer"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "invalid_mcp_configuration / invalid_request_body"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "登记本班MCP服务器（同网服务可使用环境令牌）",
+        "tags": [
+          "mcp"
+        ],
+        "x-role": "teacher"
+      }
+    },
+    "/api/mcp/servers/{id}": {
+      "delete": {
+        "description": "权限：teacher。 删除本班服务器与缓存，保留审计快照",
+        "operationId": "delete__api_mcp_servers_id",
+        "parameters": [
+          {
+            "description": "资源编号；越权与不存在同形404",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "删除本班服务器与缓存，保留审计快照",
+        "tags": [
+          "mcp"
+        ],
+        "x-role": "teacher"
+      },
+      "put": {
+        "description": "权限：teacher。 修改服务器并断开，auth_token省略时保留旧令牌",
+        "operationId": "put__api_mcp_servers_id",
+        "parameters": [
+          {
+            "description": "资源编号；越权与不存在同形404",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MCPServerInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MCPServer"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "invalid_mcp_configuration / invalid_request_body"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "修改服务器并断开，auth_token省略时保留旧令牌",
+        "tags": [
+          "mcp"
+        ],
+        "x-role": "teacher"
+      }
+    },
+    "/api/mcp/servers/{id}/connect": {
+      "post": {
+        "description": "权限：teacher。 握手并发现工具，整体替换缓存；变更工具须重新确认",
+        "operationId": "post__api_mcp_servers_id_connect",
+        "parameters": [
+          {
+            "description": "资源编号；越权与不存在同形404",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MCPServer"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "configuration_changed"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "mcp_unavailable"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "握手并发现工具，整体替换缓存；变更工具须重新确认",
+        "tags": [
+          "mcp"
+        ],
+        "x-role": "teacher"
+      }
+    },
+    "/api/mcp/servers/{id}/disconnect": {
+      "post": {
+        "description": "权限：teacher。 断开并清空发现缓存，立即停止后续工具执行",
+        "operationId": "post__api_mcp_servers_id_disconnect",
+        "parameters": [
+          {
+            "description": "资源编号；越权与不存在同形404",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "断开并清空发现缓存，立即停止后续工具执行",
+        "tags": [
+          "mcp"
+        ],
+        "x-role": "teacher"
+      }
+    },
+    "/api/mcp/servers/{id}/tools": {
+      "get": {
+        "description": "权限：teacher。 查看完整发现说明、参数结构与逐工具批准状态",
+        "operationId": "get__api_mcp_servers_id_tools",
+        "parameters": [
+          {
+            "description": "资源编号；越权与不存在同形404",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MCPTools"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "查看完整发现说明、参数结构与逐工具批准状态",
+        "tags": [
+          "mcp"
+        ],
+        "x-role": "teacher"
+      }
+    },
+    "/api/mcp/servers/{id}/tools/approve": {
+      "post": {
+        "description": "权限：teacher。 重新确认已查看的只读工具声明变更",
+        "operationId": "post__api_mcp_servers_id_tools_approve",
+        "parameters": [
+          {
+            "description": "资源编号；越权与不存在同形404",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MCPApproval"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "invalid_mcp_configuration / invalid_request_body"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "重新确认已查看的只读工具声明变更",
+        "tags": [
+          "mcp"
+        ],
+        "x-role": "teacher"
+      }
+    },
+    "/api/mcp/tool-calls": {
+      "get": {
+        "description": "权限：teacher。 本班最近100次工具调用，含用户、会话、轮次、状态和摘要",
+        "operationId": "get__api_mcp_tool-calls",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MCPAudit"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "本班最近100次工具调用，含用户、会话、轮次、状态和摘要",
+        "tags": [
+          "mcp"
+        ],
+        "x-role": "teacher"
+      }
+    },
+    "/api/mcp/tool-changes": {
+      "get": {
+        "description": "权限：teacher。 本班最近100条工具声明变更，含完整前后声明与确认时间",
+        "operationId": "get__api_mcp_tool-changes",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MCPChanges"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "本班最近100条工具声明变更，含完整前后声明与确认时间",
+        "tags": [
+          "mcp"
         ],
         "x-role": "teacher"
       }

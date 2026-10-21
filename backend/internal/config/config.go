@@ -10,6 +10,8 @@ import (
 )
 
 type Config struct {
+	MCPAuthToken, MCPDefaultURL, MCPAllowedURLs                                 string
+	MCPMaxRounds, MCPMaxTurnCalls, MCPMaxConversationCalls                      int
 	Environment, SessionSecret, DBHost, DBName, DBUser, DBPassword, UploadDir   string
 	TeacherPassword, StudentPassword                                            string
 	DBPort, MaxUploadBytes, SessionTTL, MaxFailures, WindowSeconds, LockSeconds int
@@ -38,6 +40,15 @@ func Load() (Config, error) { return Parse(os.Getenv) }
 
 func Parse(get func(string) string) (Config, error) {
 	var c Config
+	c.MCPAuthToken = get("MCP_AUTH_TOKEN")
+	c.MCPDefaultURL = get("MCP_DEFAULT_BASE_URL")
+	if c.MCPDefaultURL == "" {
+		c.MCPDefaultURL = "http://mcp-demo:8090"
+	}
+	c.MCPAllowedURLs = get("MCP_ALLOWED_BASE_URLS")
+	if c.MCPAllowedURLs == "" {
+		c.MCPAllowedURLs = c.MCPDefaultURL
+	}
 	required := []struct {
 		name   string
 		target *string
@@ -118,6 +129,9 @@ func Parse(get func(string) string) (Config, error) {
 		target   *int
 		min, max int
 	}{
+		{"MCP_MAX_ROUNDS", 3, &c.MCPMaxRounds, 1, 10},
+		{"MCP_MAX_TURN_CALLS", 6, &c.MCPMaxTurnCalls, 1, 32},
+		{"MCP_MAX_CONVERSATION_CALLS", 12, &c.MCPMaxConversationCalls, 1, 200},
 		{"DIALOGUE_TIMEOUT_SECONDS", 60, &c.DialogueTimeout, 1, 600},
 		{"DIALOGUE_MAX_OUTPUT_TOKENS", 2048, &c.DialogueMaxOutputTokens, 1, 100000},
 		{"HISTORY_MAX_MESSAGES", 12, &c.HistoryMaxMessages, 1, 100},

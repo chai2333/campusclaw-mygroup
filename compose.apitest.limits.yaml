@@ -1,0 +1,7 @@
+# Optional acceptance overlay. Apply only to the dedicated test project.
+services:
+  api:
+    environment:
+      MCP_MAX_ROUNDS: 1
+      MCP_MAX_TURN_CALLS: 1
+      MCP_MAX_CONVERSATION_CALLS: 1

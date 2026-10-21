@@ -6,13 +6,39 @@ package dialogue
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 )
 
 // Message is one chat message in a completion request.
 type Message struct {
-	Role    string // "system", "user" or "assistant"
+	Role       string     `json:"role"`
+	Content    string     `json:"content"`
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
+}
+
+type Function struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description,omitempty"`
+	Parameters  json.RawMessage `json:"parameters,omitempty"`
+	Arguments   string          `json:"arguments,omitempty"`
+}
+type Tool struct {
+	Type     string   `json:"type"`
+	Function Function `json:"function"`
+}
+type ToolCall struct {
+	ID       string   `json:"id"`
+	Type     string   `json:"type"`
+	Function Function `json:"function"`
+}
+type Decision struct {
 	Content string
+	Calls   []ToolCall
+}
+type Planner interface {
+	Decide(context.Context, Request) (Decision, error)
 }
 
 // Request is one completion call. Implementations must not mutate it.
@@ -20,6 +46,7 @@ type Request struct {
 	Model     string
 	Messages  []Message
 	MaxTokens int
+	Tools     []Tool
 }
 
 // Errors reported by gateway implementations. The orchestrator maps them to

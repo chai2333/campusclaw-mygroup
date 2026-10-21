@@ -6,6 +6,7 @@ package conversation
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -15,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"campusclaw/internal/dialogue"
+	"campusclaw/internal/mcp"
 	"campusclaw/internal/retrieval"
 	"campusclaw/internal/tutor"
 	"strconv"
@@ -77,6 +79,7 @@ var citationLabel = regexp.MustCompile(`\[(\d+)\]`)
 // Orchestrator runs one guided turn: snapshot, retrieval, assembly, streaming
 // and terminal persistence. Dependencies are server-side only.
 type Orchestrator struct {
+	MCP                *mcp.Service
 	Retriever          retrieval.Retriever
 	Gateway            dialogue.Gateway
 	Model              string
@@ -105,12 +108,9 @@ type evidenceItem struct {
 	Excerpt    string
 }
 
-// Run executes the full turn. onStart is invoked once the turn transaction
-// committed and before any external dependency is touched — the SSE layer
-// writes headers and the start event there. onDelta is invoked for each
-// streamed fragment while the turn is still in flight; citation and done
-// events are the caller's responsibility after Run reports a completed
-// outcome.
+// Run snapshots a turn, retrieves class-bound evidence and emits metadata.
+// onStart also receives cumulative tool-call snapshots before the first text
+// delta. The caller sends done only after successful terminal persistence.
 func (o *Orchestrator) Run(ctx context.Context, svc *Service, conversationID string, ownerID, classID int64, question string, onStart func(Turn) error, onDelta func(string) error) (Outcome, error) {
 	turn, err := svc.StartTurn(ctx, conversationID, ownerID, classID, question, o.Model)
 	if err != nil {
@@ -156,6 +156,24 @@ func (o *Orchestrator) Run(ctx context.Context, svc *Service, conversationID str
 	req := dialogue.Request{Model: o.Model, MaxTokens: o.MaxTokens, Messages: assembleAgentMessages(turn.PromptBody, turn.Skill, history, evidence, question)}
 	genCtx, cancel := context.WithTimeout(ctx, o.Timeout)
 	defer cancel()
+	if o.MCP != nil && turn.Skill != nil {
+		req, turn.ToolCalls, err = o.MCP.Prepare(genCtx, o.Gateway, req, mcp.Actor{ClassID: classID, UserID: ownerID, ConversationID: turn.ConversationID, MessageID: turn.AssistantMessageID}, turn.Skill.Tools, func(calls []mcp.Call) error {
+			turn.ToolCalls = calls
+			persistCtx, persistCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			defer persistCancel()
+			raw, _ := json.Marshal(calls)
+			if _, e := svc.DB.ExecContext(persistCtx, "UPDATE conversation_messages SET tool_calls_json=? WHERE id=? AND status='streaming'", string(raw), turn.AssistantMessageID); e != nil {
+				return e
+			}
+			if onStart != nil {
+				return onStart(turn)
+			}
+			return nil
+		})
+		if err != nil {
+			return o.streamFailure(ctx, svc, turn, started, classID, "", err, genCtx), nil
+		}
+	}
 	var buf strings.Builder
 	var rawBytes int
 	stripper := citationStripper{}

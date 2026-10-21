@@ -1,7 +1,8 @@
+export interface MCPCall {ref:string;status:"ok"|"denied"|"error";text:string;round:number}
 // POST SSE parser for the guided chat stream. Reads a fetch() response body
 // through a ReadableStream, buffers fragmented frames, decodes multi-byte
 // UTF-8 safely and validates the event contract strictly:
-//   meta (once, first, with skill/citations) -> delta* -> done | error (once, last)
+//   meta -> cumulative tool meta* -> delta* -> done | error (once, last)
 // Uses only erasable TypeScript so `node --test` can execute the tests
 // directly with type stripping.
 
@@ -19,6 +20,7 @@ export interface CitationPayload {
 export type StreamEvent =
   | {
       type: 'meta';
+ tool_calls?: MCPCall[];
       status: 'ok';
       skill: { id: number; name: string } | null;
       citations: CitationPayload[];
@@ -120,7 +122,9 @@ function parseEvent(name: string, data: string): StreamEvent | null {
       for (const raw of payload['citations']) {const parsed=asCitation(raw); if(!parsed || parsed.ordinal!==citations.length+1) return null; citations.push(parsed);}
       let skill: {id:number;name:string}|null=null;
       if(payload['skill']!==null) {const raw=payload['skill']; if(!isRecord(raw)||typeof raw['id']!=='number'||!Number.isInteger(raw['id'])||raw['id']<1||!asNonEmptyString(raw['name']))return null;skill={id:raw['id'],name:raw['name'] as string};}
-      return {type:'meta',status:'ok',skill,citations,conversation_id:conversationId,user_message_id:userMessageId,assistant_message_id:assistantMessageId};
+      let tool_calls:MCPCall[]|undefined;
+      if(payload['tool_calls']!==undefined){if(!Array.isArray(payload['tool_calls'])||payload['tool_calls'].length===0)return null;tool_calls=[];for(const raw of payload['tool_calls']){if(!isRecord(raw)||!asNonEmptyString(raw['ref'])||!['ok','denied','error'].includes(String(raw['status']))||typeof raw['text']!=='string'||!Number.isInteger(raw['round'])||Number(raw['round'])<0)return null;tool_calls.push(raw as unknown as MCPCall);}}
+      return {type:'meta',status:'ok',skill,citations,conversation_id:conversationId,user_message_id:userMessageId,assistant_message_id:assistantMessageId,...(tool_calls?{tool_calls}:{})};
     }
     case 'delta': {
       const text = asNonEmptyString(payload['text']);
@@ -157,22 +161,25 @@ function parseEvent(name: string, data: string): StreamEvent | null {
 }
 
 // Terminal state machine for event ordering. Throws StreamError('protocol_error')
-// on any contract violation: duplicate start, events before start, events
+// on contract violations: metadata regression, events before start, events
 // after a terminal, or a second terminal.
 function makeOrderGuard() {
   let started = false;
   let terminal = false;
   let assistantId='';
+ let textStarted=false;let metaIdentity='';let previousCalls:MCPCall[]=[];
   let citations: CitationPayload[]=[];
   return (e: StreamEvent): void => {
     if (terminal) throw new StreamError(0, 'protocol_error', false);
     switch (e.type) {
       case 'meta':
-        if (started) throw new StreamError(0, 'protocol_error', false);
-        started = true;
+        const identity=JSON.stringify([e.assistant_message_id,e.conversation_id,e.user_message_id,e.skill,e.citations]);
+        if(textStarted || (started && (!e.tool_calls || identity!==metaIdentity || e.tool_calls.length<=previousCalls.length || JSON.stringify(e.tool_calls.slice(0,previousCalls.length))!==JSON.stringify(previousCalls))))throw new StreamError(0,'protocol_error',false);
+        metaIdentity=identity;previousCalls=e.tool_calls??[];started = true;
         assistantId=e.assistant_message_id;citations=e.citations;
         return;
       case 'delta':
+        textStarted=true;
         if (!started) throw new StreamError(0, 'protocol_error', false);
         return;
       case 'done':

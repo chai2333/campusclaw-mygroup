@@ -8,7 +8,7 @@ import (
 )
 
 func migrateAgents(ctx context.Context, conn *sql.DB) error {
-	for _, col := range []struct{ table, name, definition string }{{"conversations", "agent_id", "BIGINT NULL"}, {"conversation_messages", "skill_id", "BIGINT NULL"}, {"conversation_messages", "skill_name", "VARCHAR(32) NULL"}} {
+	for _, col := range []struct{ table, name, definition string }{{"conversation_messages", "tool_calls_json", "JSON NULL"}, {"conversations", "agent_id", "BIGINT NULL"}, {"conversation_messages", "skill_id", "BIGINT NULL"}, {"conversation_messages", "skill_name", "VARCHAR(32) NULL"}} {
 		has, err := columnExists(ctx, conn, col.table, col.name)
 		if err != nil {
 			return err
