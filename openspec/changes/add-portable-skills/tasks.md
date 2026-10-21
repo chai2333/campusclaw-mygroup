@@ -14,4 +14,4 @@
 
 - [x] 3.1 Run relevant Go/MySQL, frontend and full API checks in the isolated environment and document actual results.
 - [x] 3.2 Deploy verified API/web preserving data, create the requested English skill in main application, and verify ready/Swagger and saved content.
-- [ ] 3.3 Inspect scope/secret exclusions, commit and sync verified source/docs/tests to GitHub without force push; provide actual commit link.
+- [x] 3.3 Inspect scope/secret exclusions, commit and sync verified source/docs/tests to GitHub without force push; provide actual commit link.

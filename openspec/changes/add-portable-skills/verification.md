@@ -32,3 +32,7 @@
 格式依据：[Agent Skills规范](https://agentskills.io/specification)、[OpenAI技能文档](https://learn.chatgpt.com/docs/build-skills)。YAML使用固定依赖gopkg.in/yaml.v3 v3.0.1，拒绝别名、重复键、自定义标签和过深结构。
 
 所有真实环境文件、数据库备份、测试报告、下载文件和截图不加入Git；保留原有未提交output/tmp目录。发布结果以最终提供的GitHub提交链接为准。
+
+## GitHub同步
+
+功能、测试和说明已非强制发布到main：[3ae4135](https://github.com/chai2333/campusclaw-mygroup/commit/3ae4135205e416150c0ffab57dd34b5688e40a46)。远端树`9f64c6e0b7f984588f57eb03942bb305fa45cf53`与验证后的暂存内容一致；实际密钥扫描通过，下载文件、第三方完整正文、报告和备份未上传。本记录完成状态随后作为文档提交同步。
