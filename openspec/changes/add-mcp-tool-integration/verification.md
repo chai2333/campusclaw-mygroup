@@ -20,7 +20,7 @@
 | 真实模型接口环境 | 41/41脚本通过；真实course-chat和同仓MCP，嵌入仍模拟，独立数据清理 | `week6-report-real.html`、`week6-results-real.json` |
 | 全后端回归 | 完整Go包与独立MySQL全部通过；最终MCP/原生模型客户端针对性测试通过 | `week6-backend.log`、`week6-final-targeted.log`、`week6-cancel-final.log`、`week6-migration-final.log` |
 | 前端检查 | typecheck、typecheck:test、build、20项协议测试通过 | 本机命令结果；构建日志 |
-| 浏览器与窄屏 | 教师登记发现/完整Schema/断开恢复，技能保存绑定，学生两轮真实调用与刷新，教师审计；管理和聊天320px无整页横向溢出 | `week6-mcp-teacher.jpg`、`week6-mcp-student.jpg`、`week6-mcp-audit.jpg` |
+| 浏览器与窄屏 | 教师登记发现/完整Schema/断开恢复，技能保存绑定，学生两轮真实调用与刷新，教师审计；管理和聊天320px无整页横向溢出 | `week6-mcp-teacher.jpg`、`week6-mcp-student.jpg`、`week6-mcp-audit.jpg`、`week6-mcp-approval.jpg` |
 
 `apitest/cases/`按URL和HTTP方法组织；新增10个MCP管理脚本，总计41个，另有真实模型专项脚本。HTML报告、样例回答和截图只保存在本机忽略目录。独立项目仍沿用 `campusclaw-lesson5-apitest` 名称，避免误操作主应用。
 
@@ -34,6 +34,8 @@
 4. 断开后两个技能引用都明确denied，写拒绝审计，仍完成回答。
 
 `week6-real-limits.json`两项通过：在独立API应用limits覆盖，使轮次/单次/会话上限均为1；首次实际工具调用ok，下一次因会话配额denied且不再执行远端调用，仍完成流式回答。验收后已恢复独立API默认3/6/12配置。真实样例是代表行为证据，不能证明任意自然语言输出均无答案或抵抗所有改写注入。
+
+浏览器重新确认测试在独立库准备一个带英文标签的历史说明快照差异，随后实际重新发现、查看完整新声明并点击逐工具确认；状态从待确认变为可用，变更记录带确认时间。真实HTTP服务器在运行时改变说明的逻辑由Go集成测试另行覆盖，没有把历史夹具冒充为远端生产版本变更。
 
 仅独立MCP测试栈启用MCP_TEST_MODE来制造远端错误与恶意返回；主应用没有启用该测试开关。
 
@@ -60,3 +62,5 @@ MCP服务是本课要求的无状态HTTP JSON-RPC工具子集，协商2025-03-26
 ## GitHub同步
 
 按AGENTS.md持续约定，检查与验收完成后提交并同步本仓库，不强制推送。发布结果在最终回复给出；验收记录后续附实际提交标识。
+
+实现已发布到GitHub main：[d6b4be5](https://github.com/chai2333/campusclaw-mygroup/commit/d6b4be54a6f7112a4dbbd290625b54ca68cb6a03)。远端文件树 `6015bdefe069ec0a6cf7f7579b6da6f57c436c4a` 与本机验证后的暂存版本完全一致，非强制更新。随后同步本验收完成标记，未上传真实密钥、备份、报告、截图或临时产物。

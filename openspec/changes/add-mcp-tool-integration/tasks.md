@@ -21,4 +21,4 @@
 - [x] 4.2 Run complete backend/MySQL suite, frontend typechecks/tests/build and API regressions; record all outcomes accurately.
 - [x] 4.3 Run real-model MCP acceptance and injection/two-step/limit samples; record deterministic versus model behavior and classroom peer limitation.
 - [x] 4.4 Back up and upgrade local main service preserving business data; verify health and browser teacher/student paths, update README and verification.
-- [ ] 4.5 Check secrets/diff/OpenSpec and publish validated changes to GitHub; verify matching remote tree and give commit link.
+- [x] 4.5 Check secrets/diff/OpenSpec and publish validated changes to GitHub; verify matching remote tree and give commit link.
