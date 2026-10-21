@@ -36,6 +36,8 @@ ORDER = [
     "api/skills/GET.py",
     "api/skills/{id}/GET.py",
     "api/skills/{id}/PUT.py",
+    "api/skills/preview/POST.py",
+    "api/skills/{id}/export/GET.py",
     "api/agents/POST.py",
     "api/agents/GET.py",
     "api/agents/{id}/GET.py",

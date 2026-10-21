@@ -34,7 +34,7 @@ func decode(w http.ResponseWriter, r *http.Request, target any) bool {
 		auth.Error(w, 400, "invalid_request_body")
 		return false
 	}
-	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64*1024))
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 128*1024))
 	dec.DisallowUnknownFields()
 	if dec.Decode(target) != nil {
 		auth.Error(w, 400, "invalid_request_body")
@@ -148,7 +148,7 @@ func (s *Service) GetSkill(w http.ResponseWriter, r *http.Request) {
 }
 
 // @Route POST /api/skills
-// @Summary 新建技能：JSON原文或UTF-8文件上传
+// @Summary 新建课程格式或标准SKILL.md技能；标准格式须配置本应用关键词
 // @Role teacher
 // @Request SkillInput
 // @Multipart file
@@ -176,8 +176,8 @@ func (s *Service) putSkill(w http.ResponseWriter, r *http.Request, id int64, sta
 	}
 	media, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if id == 0 && media == "multipart/form-data" {
-		r.Body = http.MaxBytesReader(w, r.Body, 64*1024)
-		if err := r.ParseMultipartForm(64 * 1024); err != nil {
+		r.Body = http.MaxBytesReader(w, r.Body, 128*1024)
+		if err := r.ParseMultipartForm(128 * 1024); err != nil {
 			auth.Error(w, 400, "invalid_request_body")
 			return
 		}
@@ -194,8 +194,8 @@ func (s *Service) putSkill(w http.ResponseWriter, r *http.Request, id int64, sta
 			return
 		}
 		defer f.Close()
-		raw, err := io.ReadAll(io.LimitReader(f, 32001))
-		if err != nil || len(raw) > 32000 {
+		raw, err := io.ReadAll(io.LimitReader(f, MaxSkillBytes+1))
+		if err != nil || len(raw) > MaxSkillBytes {
 			auth.Error(w, 400, "invalid_skill")
 			return
 		}
@@ -214,6 +214,46 @@ func (s *Service) putSkill(w http.ResponseWriter, r *http.Request, id int64, sta
 		return
 	}
 	auth.JSON(w, status, skill)
+}
+
+// @Route POST /api/skills/preview
+// @Summary 预览技能并设置本应用字段，不保存或执行；外部工具声明不授权
+// @Role teacher
+// @Request SkillImport
+// @Response 200 SkillPreview
+// @Error 400 invalid_skill / invalid_request_body
+func (s *Service) Preview(w http.ResponseWriter, r *http.Request) {
+	var input SkillImport
+	if !decode(w, r, &input) {
+		return
+	}
+	preview, err := PreviewSkill(input)
+	if err != nil {
+		auth.JSON(w, 400, map[string]string{"error": "invalid_skill", "message": err.Error()})
+		return
+	}
+	auth.JSON(w, 200, preview)
+}
+
+// @Route GET /api/skills/{id}/export
+// @Summary 导出本班技能为自包含SKILL.md文件描述，不包含服务器凭据或知识库
+// @Role teacher
+// @Response 200 SkillExport
+// @Error 404 not_found
+// @Error 400 invalid_skill
+func (s *Service) Export(w http.ResponseWriter, r *http.Request) {
+	skill, err := s.Skill(r.Context(), *auth.Current(r).ClassID, idOf(r))
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	file, err := ExportSkill(skill)
+	if err != nil {
+		auth.JSON(w, 400, map[string]string{"error": "invalid_skill", "message": err.Error()})
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	auth.JSON(w, 200, file)
 }
 
 // @Route DELETE /api/skills/{id}

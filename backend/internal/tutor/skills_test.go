@@ -19,7 +19,7 @@ func TestSkillParserConstraints(t *testing.T) {
 		"名称：x\n名称：y\n适用条件：x\n启用：是\n\n说明",
 		"名称：x\n适用条件：x\n工具：shell\n启用：是\n\n说明",
 		"名称：x\n适用条件：x\n资料：" + strings.Repeat("文", 33) + "\n启用：是\n\n说明",
-		"名称：x\n适用条件：x\n启用：是\n\n" + strings.Repeat("文", 2001),
+		"名称：x\n适用条件：x\n启用：是\n\n" + strings.Repeat("文", MaxSkillBody+1),
 		"名称：x\n适用条件：,;|\n启用：是\n\n说明",
 		"名称：x\n适用条件：x\n启用：是\n未知：x\n\n说明",
 	} {

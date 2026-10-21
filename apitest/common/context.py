@@ -120,7 +120,7 @@ class Context:
                 r"/api/conversations/[^/]+", "/api/conversations/{id}", canonical
             )
             canonical = __import__("re").sub(r"/api/agents/[^/]+", "/api/agents/{id}", canonical)
-            canonical = __import__("re").sub(r"/api/skills/[^/]+", "/api/skills/{id}", canonical)
+            canonical = __import__("re").sub(r"/api/skills/[0-9]+", "/api/skills/{id}", canonical)
             schema = self.contract["paths"][canonical][method.lower()]["responses"][str(status)][
                 "content"
             ]["application/json"]["schema"]

@@ -1,5 +1,7 @@
 # 第5课接口验收
 
+技能交换更新增加`POST /api/skills/preview`与`GET /api/skills/{id}/export`，总计43个URL脚本。覆盖预览不落库、标准格式保存与开关、元数据保留、导出往返、班级和教师权限。`accept_portable_real.py`在独立真实模型环境用同一英语技能绑定两个智能体，核对SSE选择、回答和数据库，完整样例保存在忽略目录`reports/portable-real-model.json`。
+
 从仓库根目录运行 `python3 apitest/run_all.py --compose`。需要 Docker Compose；脚本自动生成只存本机的测试 `.env`，构建独立栈、跑完所有 URL 脚本、生成 HTML 报告后清理测试栈。添加 `--keep-stack` 可保留浏览器验收环境。
 
 `cases/api/login/POST.py` 对应 `POST /api/login`，带 `{id}` 的目录对应 URL 路径参数。31个接口脚本覆盖新旧API；同一脚本内覆盖多个场景；共享 HTTP、数据库和 SSE 辅助函数放在 `common/`。新增接口脚本时也应更新 `run_all.py` 的执行清单；执行器会检查是否遗漏脚本。

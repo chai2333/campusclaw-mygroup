@@ -1059,7 +1059,7 @@
       "Skill": {
         "properties": {
           "description": {
-            "maxLength": 2000,
+            "maxLength": 12000,
             "minLength": 1,
             "type": "string"
           },
@@ -1076,7 +1076,7 @@
             "type": "string"
           },
           "source_text": {
-            "maxLength": 8000,
+            "maxLength": 16000,
             "type": "string"
           },
           "subject_text": {
@@ -1108,17 +1108,175 @@
         ],
         "type": "object"
       },
+      "SkillDraft": {
+        "properties": {
+          "description": {
+            "maxLength": 12000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 32,
+            "minLength": 1,
+            "type": "string"
+          },
+          "source_text": {
+            "maxLength": 16000,
+            "type": "string"
+          },
+          "subject_text": {
+            "maxLength": 32,
+            "type": "string"
+          },
+          "tools": {
+            "items": {
+              "pattern": "^(knowledge_search|[a-z][a-z0-9_]{0,47}@[a-z][a-z0-9_-]{0,47})$",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "trigger_text": {
+            "maxLength": 120,
+            "minLength": 0,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "trigger_text",
+          "subject_text",
+          "description",
+          "tools",
+          "source_text",
+          "enabled"
+        ],
+        "type": "object"
+      },
+      "SkillExport": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "maxLength": 64,
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "type": "string"
+          },
+          "filename": {
+            "enum": [
+              "SKILL.md"
+            ],
+            "type": "string"
+          },
+          "source_text": {
+            "description": "UTF-8课程格式或标准SKILL.md，最多16000字符且60000字节；正文最多12000字符",
+            "maxLength": 16000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "filename",
+          "directory",
+          "source_text",
+          "warnings"
+        ],
+        "type": "object"
+      },
+      "SkillImport": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 32,
+            "minLength": 1,
+            "type": "string"
+          },
+          "source_text": {
+            "description": "UTF-8课程格式或标准SKILL.md，最多16000字符且60000字节；正文最多12000字符",
+            "maxLength": 16000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "subject_text": {
+            "maxLength": 32,
+            "type": "string"
+          },
+          "tools": {
+            "items": {
+              "pattern": "^(knowledge_search|[a-z][a-z0-9_]{0,47}@[a-z][a-z0-9_-]{0,47})$",
+              "type": "string"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "trigger_text": {
+            "maxLength": 120,
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_text"
+        ],
+        "type": "object"
+      },
       "SkillInput": {
         "additionalProperties": false,
         "properties": {
           "source_text": {
-            "maxLength": 8000,
+            "description": "UTF-8课程格式或标准SKILL.md，最多16000字符且60000字节；正文最多12000字符",
+            "maxLength": 16000,
             "minLength": 1,
             "type": "string"
           }
         },
         "required": [
           "source_text"
+        ],
+        "type": "object"
+      },
+      "SkillPreview": {
+        "additionalProperties": false,
+        "properties": {
+          "format": {
+            "enum": [
+              "course",
+              "agent-skills"
+            ],
+            "type": "string"
+          },
+          "ready": {
+            "type": "boolean"
+          },
+          "skill": {
+            "$ref": "#/components/schemas/SkillDraft"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "format",
+          "skill",
+          "warnings",
+          "ready"
         ],
         "type": "object"
       },
@@ -3760,7 +3918,7 @@
         "x-role": "class"
       },
       "post": {
-        "description": "权限：teacher。 新建技能：JSON原文或UTF-8文件上传",
+        "description": "权限：teacher。 新建课程格式或标准SKILL.md技能；标准格式须配置本应用关键词",
         "operationId": "post__api_skills",
         "requestBody": {
           "content": {
@@ -3829,7 +3987,80 @@
             "description": "service_unavailable"
           }
         },
-        "summary": "新建技能：JSON原文或UTF-8文件上传",
+        "summary": "新建课程格式或标准SKILL.md技能；标准格式须配置本应用关键词",
+        "tags": [
+          "skills"
+        ],
+        "x-role": "teacher"
+      }
+    },
+    "/api/skills/preview": {
+      "post": {
+        "description": "权限：teacher。 预览技能并设置本应用字段，不保存或执行；外部工具声明不授权",
+        "operationId": "post__api_skills_preview",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillImport"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillPreview"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "invalid_skill / invalid_request_body"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "预览技能并设置本应用字段，不保存或执行；外部工具声明不授权",
         "tags": [
           "skills"
         ],
@@ -4068,6 +4299,90 @@
           }
         },
         "summary": "更新技能原文（下一轮生效）",
+        "tags": [
+          "skills"
+        ],
+        "x-role": "teacher"
+      }
+    },
+    "/api/skills/{id}/export": {
+      "get": {
+        "description": "权限：teacher。 导出本班技能为自包含SKILL.md文件描述，不包含服务器凭据或知识库",
+        "operationId": "get__api_skills_id_export",
+        "parameters": [
+          {
+            "description": "资源编号；越权与不存在同形404",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillExport"
+                }
+              }
+            },
+            "description": "成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "invalid_skill"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "authentication_required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "角色或班级权限不足"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "service_unavailable"
+          }
+        },
+        "summary": "导出本班技能为自包含SKILL.md文件描述，不包含服务器凭据或知识库",
         "tags": [
           "skills"
         ],

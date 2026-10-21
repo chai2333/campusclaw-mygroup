@@ -451,6 +451,11 @@ export const saveAgent=(input:TutorAgentInput,id?:number):Promise<TutorAgent>=>r
 export const fetchSkills=():Promise<TutorSkill[]>=>request<{skills:TutorSkill[]}>('/api/skills').then(x=>x.skills);
 export const saveSkillFile=(sourceText:string,id?:number):Promise<TutorSkill>=>request<TutorSkill>(id?`/api/skills/${id}`:'/api/skills',{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source_text:sourceText})});
 export const deleteSkill=(id:number):Promise<{status:string}>=>request(`/api/skills/${id}`,{method:'DELETE'});
+export interface SkillImport { source_text:string; name?:string; trigger_text?:string; subject_text?:string; tools?:string[]; enabled?:boolean; }
+export interface SkillPreview { format:'course'|'agent-skills'; skill:TutorSkill; warnings:string[]; ready:boolean; }
+export interface SkillExport { filename:string; directory:string; source_text:string; warnings:string[]; }
+export const previewSkill=(input:SkillImport):Promise<SkillPreview>=>request('/api/skills/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});
+export const exportSkill=(id:number):Promise<SkillExport>=>request(`/api/skills/${id}/export`);
 
 export interface MCPServer {id:number;name:string;base_url:string;connected:boolean;token_configured:boolean;last_error:string;version:number}
 export interface MCPTool {name:string;description:string;inputSchema:Record<string,unknown>;annotations:{readOnlyHint:boolean;destructiveHint:boolean;openWorldHint:boolean};approved:boolean;previous_description?:string}

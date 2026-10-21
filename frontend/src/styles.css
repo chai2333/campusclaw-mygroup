@@ -2002,6 +2002,7 @@ a:hover {
 .agent-picker {padding:12px;display:flex;flex-direction:column;gap:8px;}
 .agent-context {padding:0 16px;}
 .msg-skill {font-size:.8rem;font-weight:600;margin:0 0 8px;}
+.skill-preview-body {white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem;max-height:360px;overflow-y:auto;}
 @media(max-width:700px){.config-grid{grid-template-columns:minmax(0,1fr);}.config-page{padding:16px;}.config-list{max-height:260px;overflow-y:auto;}.config-editor{padding:14px;}}
 
 .mcp-section { margin-top: 2rem; }

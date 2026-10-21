@@ -173,7 +173,7 @@
           "description": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 2000
+            "maxLength": 12000
           },
           "tools": {
             "type": "array",
@@ -184,7 +184,7 @@
           },
           "source_text": {
             "type": "string",
-            "maxLength": 8000
+            "maxLength": 16000
           },
           "enabled": {
             "type": "boolean"
@@ -207,7 +207,8 @@
           "source_text": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 8000
+            "maxLength": 16000,
+            "description": "UTF-8课程格式或标准SKILL.md，最多16000字符且60000字节；正文最多12000字符"
           }
         },
         "required": [
@@ -1379,6 +1380,163 @@
         },
         "required": [
           "changes"
+        ],
+        "additionalProperties": false
+      },
+      "SkillDraft": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "trigger_text": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 120
+          },
+          "subject_text": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 12000
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(knowledge_search|[a-z][a-z0-9_]{0,47}@[a-z][a-z0-9_-]{0,47})$"
+            }
+          },
+          "source_text": {
+            "type": "string",
+            "maxLength": 16000
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "trigger_text",
+          "subject_text",
+          "description",
+          "tools",
+          "source_text",
+          "enabled"
+        ]
+      },
+      "SkillImport": {
+        "type": "object",
+        "properties": {
+          "source_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16000,
+            "description": "UTF-8课程格式或标准SKILL.md，最多16000字符且60000字节；正文最多12000字符"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "trigger_text": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "subject_text": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(knowledge_search|[a-z][a-z0-9_]{0,47}@[a-z][a-z0-9_-]{0,47})$"
+            },
+            "maxItems": 16
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "source_text"
+        ],
+        "additionalProperties": false
+      },
+      "SkillPreview": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "course",
+              "agent-skills"
+            ]
+          },
+          "skill": {
+            "$ref": "#/components/schemas/SkillDraft"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ready": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "format",
+          "skill",
+          "warnings",
+          "ready"
+        ],
+        "additionalProperties": false
+      },
+      "SkillExport": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "enum": [
+              "SKILL.md"
+            ]
+          },
+          "directory": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+          },
+          "source_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16000,
+            "description": "UTF-8课程格式或标准SKILL.md，最多16000字符且60000字节；正文最多12000字符"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "filename",
+          "directory",
+          "source_text",
+          "warnings"
         ],
         "additionalProperties": false
       }

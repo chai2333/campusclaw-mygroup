@@ -99,6 +99,8 @@ func main() {
 	mux.HandleFunc("GET /api/skills", authSvc.Class(tutorSvc.Skills))
 	mux.HandleFunc("GET /api/skills/{id}", authSvc.Class(tutorSvc.GetSkill))
 	mux.HandleFunc("POST /api/skills", authSvc.Teacher(tutorSvc.CreateSkill))
+	mux.HandleFunc("POST /api/skills/preview", authSvc.Teacher(tutorSvc.Preview))
+	mux.HandleFunc("GET /api/skills/{id}/export", authSvc.Teacher(tutorSvc.Export))
 	mux.HandleFunc("PUT /api/skills/{id}", authSvc.Teacher(tutorSvc.UpdateSkill))
 	mux.HandleFunc("DELETE /api/skills/{id}", authSvc.Teacher(tutorSvc.RemoveSkill))
 	assistantSvc := &assistant.Service{DB: conn}

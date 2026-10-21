@@ -23,10 +23,24 @@ type Skill struct {
 var separators = regexp.MustCompile(`[,，、;；|]+`)
 
 func ParseSkill(source string) (Skill, error) {
-	s := Skill{SourceText: source, Tools: []string{}}
-	if !utf8.ValidString(source) || utf8.RuneCountInString(source) > 8000 {
-		return s, errors.New("技能文件须为UTF-8且不超过8000字")
+	if err := validateSource(source); err != nil {
+		return Skill{}, err
 	}
+	if isPortable(source) {
+		preview, err := PreviewSkill(SkillImport{SourceText: source})
+		if err != nil {
+			return Skill{}, err
+		}
+		if !preview.Ready {
+			return Skill{}, errors.New("请设置本应用的适用关键词后再保存")
+		}
+		return preview.Skill, nil
+	}
+	return parseCourseSkill(source)
+}
+
+func parseCourseSkill(source string) (Skill, error) {
+	s := Skill{SourceText: source, Tools: []string{}}
 	normalized := strings.ReplaceAll(strings.TrimPrefix(source, "\ufeff"), "\r\n", "\n")
 	fields := map[string]string{}
 	var body []string
@@ -71,7 +85,7 @@ func ParseSkill(source string) (Skill, error) {
 	for _, field := range []struct {
 		name, value string
 		limit       int
-	}{{"名称", s.Name, 32}, {"适用条件", s.TriggerText, 120}, {"正文", s.Description, 2000}} {
+	}{{"名称", s.Name, 32}, {"适用条件", s.TriggerText, 120}, {"正文", s.Description, MaxSkillBody}} {
 		if field.value == "" || utf8.RuneCountInString(field.value) > field.limit {
 			return s, errors.New(field.name + "为空或超过字数限制")
 		}

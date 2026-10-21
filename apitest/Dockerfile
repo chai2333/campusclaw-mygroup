@@ -3,5 +3,6 @@ WORKDIR /work
 COPY apitest/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 COPY apitest /work/apitest
+COPY skills /work/skills
 RUN mkdir -p /work/apitest/reports
 ENTRYPOINT ["python", "apitest/run_all.py"]

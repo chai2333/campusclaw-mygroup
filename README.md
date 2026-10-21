@@ -119,7 +119,7 @@ curl -fsS http://localhost:8080/api/ask \
 
 教师登录后进入“智能体与技能”：创建智能体，为它填写角色提示词（可空，最多2000字）、启用状态、技能和本班材料绑定。名称班内唯一，最多64字；空角色使用默认学习助手，不拒绝回答。旧版班级配置保留为兼容接口，新回答只读取会话固定的智能体。
 
-技能文件为本课自定义中文字段格式，不是通用 SKILL.md 执行器。名称、适用条件、启用必填；首个空行后是正文，正文不超过2000字，文件总长最多8000字。示例：
+技能文件支持以下课程中文字段格式，也支持标准自包含 SKILL.md（见技能交换说明）。课程格式的名称、适用条件、启用必填，首个空行后是正文；两种格式正文最多12000字符，文件最多16000字符且UTF-8不超过60000字节。示例：
 
 ```text
 名称：数学解题引导
@@ -273,6 +273,10 @@ docker compose --project-name campusclaw-lesson5-apitest \
 它记录数学数值题和语文默写的真实回答，检查语文默写时引导不直接给诗的下一句、停用后答案变化和材料注入；结果在本机 `apitest/reports/real-model.json`，不入Git。整个自动套件可独立验证隔离规则；课程要求的同伴本人账号交叉验证仍需由同伴执行并记录，不能以自动脚本冒充。
 
 
+## 可分享和导入的技能
+
+支持课程格式及标准自包含`SKILL.md`，教师可解析预览、配置本应用关键词、保存绑定多个智能体，并下载标准文件用于其他agent。提供[英语作文批改技能](skills/english-writing-review/SKILL.md)，使用步骤、依赖边界及新接口见[技能交换说明](docs/portable-skills.md)。外部工具声明不自动授权，脚本与附件需适配。
+
 ## 第6课：MCP与工具接入
 
 同仓 `mcp-server/` 提供两个只读教学工具，`formula_hint`给公式与步骤提示，`unit_convert`给单位换算方向/倍率，由学生完成数值计算。`POST /mcp` 使用JSON-RPC 2.0，支持initialize、tools/list、tools/call以及initialized通知；`GET /health`不需要令牌。Compose服务名为 `mcp-demo`，仅在内部网络监听8090，不开放宿主端口。现有 `docker compose` 或课堂入口 `docker compose -f docker-compose.yml` 均启动同一套应用。
@@ -306,7 +310,7 @@ docker compose --project-name campusclaw-lesson5-apitest \
 
 SSE兼容扩展：初始meta仍包含技能、引用和消息ID；有调用时在第一个delta前继续发送同ID的meta，`tool_calls`为累计快照（不是追加片段）。每条含 `ref/status/text/round`，status仅 `ok/denied/error`；确无调用时省略字段。前端拒绝正文之后才到的meta、身份变化和工具快照回退。
 
-验收命令：`python3 apitest/run_all.py --compose --keep-stack`；真实模型可用 `--real-model`（使用本机忽略目录 `apitest/reports/.env` 的真实对话配置，嵌入仍模拟）。两个模式均连接真实同仓MCP服务；41个URL组织脚本核对响应、数据库及原有业务回归，HTML在忽略目录。独立MCP协议测试：在Python环境进入 `mcp-server/` 执行 `python3 -m unittest -v`。课堂的同伴本人账号交叉验证需实际同伴参与，自动化跨班测试不替代该环节；详见本次OpenSpec验证记录。
+验收命令：`python3 apitest/run_all.py --compose --keep-stack`；真实模型可用 `--real-model`（使用本机忽略目录 `apitest/reports/.env` 的真实对话配置，嵌入仍模拟）。两个模式均连接真实同仓MCP服务；43个URL组织脚本核对响应、数据库及原有业务回归，HTML在忽略目录。独立MCP协议测试：在Python环境进入 `mcp-server/` 执行 `python3 -m unittest -v`。课堂的同伴本人账号交叉验证需实际同伴参与，自动化跨班测试不替代该环节；详见本次OpenSpec验证记录。
 
 真实模型补充样例（独立测试栈，先配置本地测试.env）：
 
