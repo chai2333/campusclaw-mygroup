@@ -188,6 +188,14 @@
           },
           "enabled": {
             "type": "boolean"
+          },
+          "tool_policy": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "required"
+            ],
+            "description": "auto由模型按需调用；required首轮至少请求一个已绑定MCP工具，失败会记录原因"
           }
         },
         "required": [
@@ -198,7 +206,8 @@
           "description",
           "tools",
           "source_text",
-          "enabled"
+          "enabled",
+          "tool_policy"
         ]
       },
       "SkillInput": {
@@ -1422,6 +1431,14 @@
           },
           "enabled": {
             "type": "boolean"
+          },
+          "tool_policy": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "required"
+            ],
+            "description": "auto由模型按需调用；required首轮至少请求一个已绑定MCP工具，失败会记录原因"
           }
         },
         "required": [
@@ -1432,7 +1449,8 @@
           "description",
           "tools",
           "source_text",
-          "enabled"
+          "enabled",
+          "tool_policy"
         ]
       },
       "SkillImport": {
@@ -1467,6 +1485,14 @@
           },
           "enabled": {
             "type": "boolean"
+          },
+          "tool_policy": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "required"
+            ],
+            "description": "auto由模型按需调用；required首轮至少请求一个已绑定MCP工具，失败会记录原因"
           }
         },
         "required": [

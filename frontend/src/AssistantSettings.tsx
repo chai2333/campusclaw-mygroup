@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ApiError, fetchAgents, fetchSkills, fetchMaterials, saveAgent, saveSkillFile, deleteSkill, previewSkill, exportSkill, type SkillPreview, type TutorAgent, type TutorAgentInput, type TutorSkill, type Material, type Me } from './api';
+import { ApiError, fetchAgents, fetchSkills, fetchMaterials, fetchMCPServers, fetchMCPTools, type MCPTool, saveAgent, saveSkillFile, deleteSkill, previewSkill, exportSkill, type SkillPreview, type TutorAgent, type TutorAgentInput, type TutorSkill, type Material, type Me } from './api';
 import { AppHeader, type Theme } from './AppHeader';
 import { useToast } from './Toast';
 
@@ -12,6 +12,8 @@ export function AssistantSettings({me,theme,onToggleTheme,onLogout,onNavigate,on
  const [agents,setAgents]=useState<TutorAgent[]>([]);
  const [skills,setSkills]=useState<TutorSkill[]>([]);
  const [materials,setMaterials]=useState<Material[]>([]);
+ const [toolOptions,setToolOptions]=useState<Array<{ref:string;server:string;tool:MCPTool}>>([]);
+ const [toolError,setToolError]=useState('');
  const [tab,setTab]=useState<'agents'|'skills'>('agents');
  const [agentId,setAgentId]=useState<number|undefined>();
  const [input,setInput]=useState<TutorAgentInput>(newAgent);
@@ -31,11 +33,15 @@ export function AssistantSettings({me,theme,onToggleTheme,onLogout,onNavigate,on
   }
   setError(text);toast.push(text,'error');
  },[onUnauthorized,toast]);
+ const loadTools=useCallback(async()=>{
+  try{const servers=await fetchMCPServers();const connected=servers.filter(s=>s.connected);const results=await Promise.allSettled(connected.map(async server=>(await fetchMCPTools(server.id)).map(tool=>({ref:`${tool.name}@${server.name}`,server:server.name,tool}))));setToolOptions(results.flatMap(r=>r.status==='fulfilled'?r.value:[]));setToolError(results.some(r=>r.status==='rejected')?'部分服务器工具加载失败，请重新加载；已有绑定保留。':'');}
+  catch(err){if(err instanceof ApiError&&err.status===401){onUnauthorized();return;}setToolOptions([]);setToolError('工具列表加载失败，请重新加载；已有绑定保留。');}
+ },[onUnauthorized]);
  const reload=useCallback(async()=>{
   setLoading(true);
-  try{const [a,s,m]=await Promise.all([fetchAgents(),fetchSkills(),fetchMaterials()]);setAgents(a);setSkills(s);setMaterials(m);setError('');}
+  try{const [a,s,m]=await Promise.all([fetchAgents(),fetchSkills(),fetchMaterials()]);setAgents(a);setSkills(s);setMaterials(m);setError('');await loadTools();}
   catch(err){handleError(err);}finally{setLoading(false);}
- },[handleError]);
+ },[handleError,loadTools]);
  useEffect(()=>{void reload();},[reload]);
  const editAgent=(a:TutorAgent)=>{setAgentId(a.id);setInput({name:a.name,prompt:a.prompt,enabled:a.enabled,skill_ids:a.skill_ids,material_ids:a.material_ids});setError('');setMessage('');};
  const save=async()=>{
@@ -45,7 +51,7 @@ export function AssistantSettings({me,theme,onToggleTheme,onLogout,onNavigate,on
  };
  const saveSkill=async()=>{
   setBusy(true);setError('');setMessage('');
-  try{const parsed=await previewSkill({source_text:source,...(preview?{name:preview.skill.name,trigger_text:preview.skill.trigger_text,subject_text:preview.skill.subject_text,tools:preview.skill.tools,enabled:preview.skill.enabled}:{})});setPreview(parsed);setSource(parsed.skill.source_text);if(!parsed.ready){setError('请填写适用关键词后再保存。');return;}const skill=await saveSkillFile(parsed.skill.source_text,skillId);setSkillId(skill.id);setSource(skill.source_text);await reload();setMessage(`技能“${skill.name}”已保存，已绑定的智能体下次提问使用新配置。`);}
+  try{const parsed=await previewSkill({source_text:source,...(preview?{name:preview.skill.name,trigger_text:preview.skill.trigger_text,subject_text:preview.skill.subject_text,tools:preview.skill.tools,tool_policy:preview.skill.tool_policy,enabled:preview.skill.enabled}:{})});setPreview(parsed);setSource(parsed.skill.source_text);if(!parsed.ready){setError('请填写适用关键词后再保存。');return;}const skill=await saveSkillFile(parsed.skill.source_text,skillId);setSkillId(skill.id);setSource(skill.source_text);await reload();setMessage(`技能“${skill.name}”已保存，已绑定的智能体下次提问使用新配置。`);}
   catch(err){handleError(err);}finally{setBusy(false);}
  };
  const remove=async()=>{
@@ -72,7 +78,7 @@ export function AssistantSettings({me,theme,onToggleTheme,onLogout,onNavigate,on
   <AppHeader me={me} theme={theme} active="assistant" onToggleTheme={onToggleTheme} onLogout={onLogout} onNavigate={onNavigate}/>
   <main className="config-page">
    <h1>智能体与技能</h1><p>每个智能体独立设置角色、技能和资料范围。会话固定智能体，配置修改从下一轮提问生效。</p>
-   <div className="config-tabs" aria-label="配置类型"><button type="button" className={`btn ${tab==='agents'?'btn-primary':''}`} aria-pressed={tab==='agents'} onClick={()=>setTab('agents')}>智能体</button><button type="button" className={`btn ${tab==='skills'?'btn-primary':''}`} aria-pressed={tab==='skills'} onClick={()=>setTab('skills')}>技能文件</button><button type="button" className="btn" onClick={()=>void reload()} disabled={busy}>重新加载</button></div>
+   <div className="config-tabs" aria-label="配置类型"><button type="button" className={`btn ${tab==='agents'?'btn-primary':''}`} aria-pressed={tab==='agents'} onClick={()=>setTab('agents')}>智能体</button><button type="button" className={`btn ${tab==='skills'?'btn-primary':''}`} aria-pressed={tab==='skills'} onClick={()=>{setTab('skills');if(!preview)void inspect();}}>技能文件</button><button type="button" className="btn" onClick={()=>void reload()} disabled={busy}>重新加载</button></div>
    {loading&&<p role="status">正在加载本班配置…</p>}
    {error&&<p role="alert" className="config-error">{error}</p>}
    {message&&<p role="status" className="config-message">{message}</p>}
@@ -90,7 +96,7 @@ export function AssistantSettings({me,theme,onToggleTheme,onLogout,onNavigate,on
      <button className="btn btn-primary" type="submit" disabled={busy||!input.name.trim()||[...input.name].length>64||[...input.prompt].length>2000}>{busy?'保存中…':'保存智能体'}</button>
     </form>
    </div>:<div className="config-grid">
-    <section className="config-list" aria-label="本班技能"><button className="btn btn-primary" type="button" onClick={()=>{setSkillId(undefined);setSource(sampleSkill);setPreview(undefined);setMessage('');}} disabled={busy}>新建技能</button>{skills.map(skill=><div className="config-item" key={skill.id}><button type="button" className="btn" onClick={()=>{setSkillId(skill.id);setSource(skill.source_text);setPreview(undefined);setError('');setMessage('');}} disabled={busy}>{skill.name}</button><span>{skill.trigger_text}</span><button className="btn btn-sm" type="button" disabled={busy} onClick={()=>void toggleSkill(skill)}>{skill.enabled?'停用':'启用'}</button></div>)}</section>
+    <section className="config-list" aria-label="本班技能"><button className="btn btn-primary" type="button" onClick={()=>void inspect(sampleSkill,true)} disabled={busy}>新建技能</button>{skills.map(skill=><div className="config-item" key={skill.id}><button type="button" className="btn" onClick={()=>{setSkillId(skill.id);setSource(skill.source_text);setPreview(undefined);void inspect(skill.source_text);}} disabled={busy}>{skill.name}</button><span>{skill.trigger_text}</span><button className="btn btn-sm" type="button" disabled={busy} onClick={()=>void toggleSkill(skill)}>{skill.enabled?'停用':'启用'}</button></div>)}</section>
     <form className="config-editor" onSubmit={e=>{e.preventDefault();void saveSkill();}}><h2>{skillId?'编辑技能文件':'新建技能文件'}</h2><p className="config-hint">支持课程格式 .txt/.md 和标准 SKILL.md。每次读取文件都会创建新草稿；同一技能可在“智能体”页绑定多次。</p><label htmlFor="skill-upload">导入UTF-8技能文件</label><input id="skill-upload" type="file" accept=".txt,.md" disabled={busy} onChange={async e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;if(file.size>60000){setError('文件最多60000字节、16000字符。');return;}try{const raw=new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());await inspect(raw,true);}catch{setError('技能文件必须使用UTF-8编码。');}}}/>
      <label htmlFor="skill-source">技能文件原文</label><textarea id="skill-source" rows={18} value={source} onChange={e=>{setSource(e.target.value);setPreview(undefined);}} disabled={busy}/><p className="config-hint">{[...source].length}/16000字符；正文最多12000字符。标准格式以 --- 分隔YAML头部；课程格式以首个空行分隔正文。</p>
      <button type="button" className="btn" disabled={busy||!source.trim()} onClick={()=>void inspect()}>解析预览 / 设置适用条件</button>
@@ -98,8 +104,16 @@ export function AssistantSettings({me,theme,onToggleTheme,onLogout,onNavigate,on
       <label htmlFor="skill-display-name">显示名称（1–32字，不改变标准name）</label><input id="skill-display-name" value={preview.skill.name} onChange={e=>setPreview({...preview,skill:{...preview.skill,name:e.target.value}})}/>
       <label htmlFor="skill-triggers">适用关键词（必填，逗号分隔，最多120字）</label><input id="skill-triggers" value={preview.skill.trigger_text} onChange={e=>setPreview({...preview,skill:{...preview.skill,trigger_text:e.target.value}})}/>
       <label htmlFor="skill-subject">资料标题筛选（可留空）</label><input id="skill-subject" value={preview.skill.subject_text} onChange={e=>setPreview({...preview,skill:{...preview.skill,subject_text:e.target.value}})}/>
-      <label htmlFor="skill-tools">本应用工具引用（可留空，逗号分隔）</label><input id="skill-tools" value={preview.skill.tools.join(',')} onChange={e=>setPreview({...preview,skill:{...preview.skill,tools:e.target.value.split(/[,，、;；|]+/).map(x=>x.trim()).filter(Boolean)}})}/>
-      <p className="config-hint">支持 knowledge_search 或 formula_hint@campus-tools；MCP工具须先在本班连接发现并确认。外部 allowed-tools 不授予权限。</p>
+      <fieldset><legend>MCP 工具（勾选绑定）</legend>
+       <p className="config-hint">知识库按智能体绑定的资料检索。下方选择本班已发现的外部工具，学生直接提问即可。</p>
+       {toolError&&<p role="alert" className="config-error">{toolError}</p>}
+       {toolOptions.map(({ref,server,tool})=>{const selected=preview.skill.tools.includes(ref);const available=tool.approved&&tool.annotations.readOnlyHint&&!tool.annotations.destructiveHint&&!tool.annotations.openWorldHint;return <div key={ref} className="skill-tool-option"><label className="config-check"><input type="checkbox" checked={selected} disabled={!available&&!selected} onChange={e=>setPreview({...preview,skill:{...preview.skill,tools:e.target.checked?[...preview.skill.tools,ref]:preview.skill.tools.filter(x=>x!==ref)}})}/>{({formula_hint:'公式提示',unit_convert:'单位换算提示'} as Record<string,string>)[tool.name]||tool.name} · {server}{!available?'（待确认或不可执行）':''}</label><p className="config-hint">{tool.description}</p></div>;})}
+       {preview.skill.tools.filter(ref=>ref!=='knowledge_search'&&!toolOptions.some(t=>t.ref===ref)).map(ref=><label className="config-check" key={ref}><input type="checkbox" checked onChange={()=>setPreview({...preview,skill:{...preview.skill,tools:preview.skill.tools.filter(x=>x!==ref)}})}/>{ref}（当前不可用，取消勾选可移除）</label>)}
+       {toolOptions.length===0&&!toolError&&<p className="config-hint">暂无已连接的外部工具。</p>}
+       <button className="btn" type="button" onClick={()=>onNavigate('/mcp')}>管理 MCP 服务器</button>
+      </fieldset>
+      <label htmlFor="skill-tool-policy">MCP 调用策略</label><select id="skill-tool-policy" value={preview.skill.tool_policy||'auto'} onChange={e=>setPreview({...preview,skill:{...preview.skill,tool_policy:e.target.value as 'auto'|'required'}})}><option value="auto">自动判断：模型按需调用</option><option value="required">必须调用：首轮至少请求一个所选 MCP 工具</option></select>
+      <p className="config-hint">必须调用需要至少勾选一个 MCP 工具；模型生成参数，应用校验后执行。失败或达到次数上限会显示原因，不代表调用成功，也不保证调用全部所选工具。</p>
       <label className="config-check"><input type="checkbox" checked={preview.skill.enabled} onChange={e=>setPreview({...preview,skill:{...preview.skill,enabled:e.target.checked}})}/>启用，允许已绑定智能体按关键词使用</label>
       {preview.warnings.length>0&&<ul className="config-hint">{preview.warnings.map((warning,i)=><li key={i}>{warning}</li>)}</ul>}
       <details><summary>查看实际进入模型的技能正文（{[...preview.skill.description].length}字符）</summary><pre className="skill-preview-body">{preview.skill.description}</pre></details>

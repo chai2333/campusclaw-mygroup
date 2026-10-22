@@ -8,7 +8,7 @@ import (
 )
 
 func migrateAgents(ctx context.Context, conn *sql.DB) error {
-	for _, col := range []struct{ table, name, definition string }{{"conversation_messages", "tool_calls_json", "JSON NULL"}, {"conversations", "agent_id", "BIGINT NULL"}, {"conversation_messages", "skill_id", "BIGINT NULL"}, {"conversation_messages", "skill_name", "VARCHAR(32) NULL"}} {
+	for _, col := range []struct{ table, name, definition string }{{"skills", "tool_policy", "VARCHAR(16) NOT NULL DEFAULT 'auto'"}, {"conversation_messages", "tool_calls_json", "JSON NULL"}, {"conversations", "agent_id", "BIGINT NULL"}, {"conversation_messages", "skill_id", "BIGINT NULL"}, {"conversation_messages", "skill_name", "VARCHAR(32) NULL"}} {
 		has, err := columnExists(ctx, conn, col.table, col.name)
 		if err != nil {
 			return err
@@ -105,6 +105,63 @@ func seedAgents(ctx context.Context, conn *sql.DB) error {
 		}
 		if _, e = conn.ExecContext(ctx, "UPDATE conversations SET agent_id=? WHERE class_id=? AND agent_id IS NULL", agentID, classID); e != nil {
 			return e
+		}
+	}
+	return nil
+}
+
+// Seed independent applications once; subsequent starts never rewrite prompts,
+// restore removed bindings or broaden their material scope.
+func seedBuiltinAgents(ctx context.Context, conn *sql.DB) error {
+	rows, err := conn.QueryContext(ctx, "SELECT id FROM classes ORDER BY id")
+	if err != nil {
+		return err
+	}
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err = rows.Scan(&id); err != nil {
+			break
+		}
+		ids = append(ids, id)
+	}
+	if err == nil {
+		err = rows.Err()
+	}
+	rows.Close()
+	if err != nil {
+		return err
+	}
+	for _, classID := range ids {
+		for _, preset := range []struct{ key, name, prompt, skill string }{
+			{"builtin-math-v1", "数学学习助手", "你是数学学习助手，先帮助学生理解题意、检查单位和已有步骤，再给下一步提示，引导学生自行完成关键计算。", "math"},
+			{"builtin-reading-v1", "语文阅读助手", "你是语文阅读助手，引导学生寻找原文依据、理解词句和文章结构，鼓励学生先表达自己的理解。", "chinese"},
+		} {
+			tx, err := conn.BeginTx(ctx, nil)
+			if err != nil {
+				return err
+			}
+			result, err := tx.ExecContext(ctx, "INSERT IGNORE INTO tutor_agents(class_id,name,prompt,enabled,version,seed_key) VALUES(?,?,?,1,1,?)", classID, preset.name, preset.prompt, preset.key)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			created, _ := result.RowsAffected()
+			if created > 0 {
+				id, err := result.LastInsertId()
+				if err != nil {
+					tx.Rollback()
+					return err
+				}
+				_, err = tx.ExecContext(ctx, "INSERT INTO tutor_agent_skills(agent_id,skill_id,class_id) SELECT ?,id,class_id FROM skills WHERE class_id=? AND seed_key=?", id, classID, preset.skill)
+				if err != nil {
+					tx.Rollback()
+					return err
+				}
+			}
+			if err = tx.Commit(); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

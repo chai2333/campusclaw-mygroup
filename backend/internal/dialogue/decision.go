@@ -13,7 +13,7 @@ import (
 // Decide is a bounded native function-call round. The final user-facing prose
 // still uses Stream; tool calls cannot be smuggled through prose parsing.
 func (g *HTTPGateway) Decide(ctx context.Context, req Request) (Decision, error) {
-	body, err := json.Marshal(chatRequest{Model: firstNonEmpty(req.Model, g.Model), Stream: false, MaxTokens: req.MaxTokens, Messages: toChatMessages(req.Messages), Tools: req.Tools})
+	body, err := json.Marshal(chatRequest{Model: firstNonEmpty(req.Model, g.Model), Stream: false, MaxTokens: req.MaxTokens, Messages: toChatMessages(req.Messages), Tools: req.Tools, ToolChoice: req.ToolChoice})
 	if err != nil {
 		return Decision{}, ErrUnavailable
 	}

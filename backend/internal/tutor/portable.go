@@ -23,6 +23,7 @@ type SkillImport struct {
 	TriggerText *string   `json:"trigger_text,omitempty"`
 	SubjectText *string   `json:"subject_text,omitempty"`
 	Tools       *[]string `json:"tools,omitempty"`
+	ToolPolicy  *string   `json:"tool_policy,omitempty"`
 	Enabled     *bool     `json:"enabled,omitempty"`
 }
 type SkillPreview struct {
@@ -164,12 +165,15 @@ func applySettings(skill *Skill, input SkillImport) {
 	if input.Tools != nil {
 		skill.Tools = *input.Tools
 	}
+	if input.ToolPolicy != nil {
+		skill.ToolPolicy = *input.ToolPolicy
+	}
 	if input.Enabled != nil {
 		skill.Enabled = *input.Enabled
 	}
 }
 func validateLocalLines(skill Skill) error {
-	for _, value := range append([]string{skill.Name, skill.TriggerText, skill.SubjectText}, skill.Tools...) {
+	for _, value := range append([]string{skill.Name, skill.TriggerText, skill.SubjectText, skill.ToolPolicy}, skill.Tools...) {
 		if strings.ContainsAny(value, "\r\n") {
 			return errors.New("名称、关键词、资料和工具字段不可换行")
 		}
@@ -181,11 +185,11 @@ func courseSource(s Skill) string {
 	if s.Enabled {
 		enabled = "是"
 	}
-	return fmt.Sprintf("名称：%s\n适用条件：%s\n资料：%s\n工具：%s\n启用：%s\n\n%s", s.Name, s.TriggerText, s.SubjectText, strings.Join(s.Tools, ","), enabled, s.Description)
+	return fmt.Sprintf("名称：%s\n适用条件：%s\n资料：%s\n工具：%s\n工具策略：%s\n启用：%s\n\n%s", s.Name, s.TriggerText, s.SubjectText, strings.Join(s.Tools, ","), s.ToolPolicy, enabled, s.Description)
 }
 func renderPortable(fields map[string]any, s Skill) (string, error) {
 	m := metadataOf(fields)
-	for key, value := range map[string]string{"display-name": s.Name, "triggers": s.TriggerText, "subject": s.SubjectText, "tools": strings.Join(s.Tools, ","), "enabled": strconv.FormatBool(s.Enabled)} {
+	for key, value := range map[string]string{"display-name": s.Name, "triggers": s.TriggerText, "subject": s.SubjectText, "tools": strings.Join(s.Tools, ","), "tool-policy": s.ToolPolicy, "enabled": strconv.FormatBool(s.Enabled)} {
 		m["campusclaw-"+key] = value
 	}
 	raw, err := yaml.Marshal(fields)
@@ -254,7 +258,7 @@ func PreviewSkill(input SkillImport) (SkillPreview, error) {
 			return SkillPreview{}, errors.New("campusclaw-enabled只接受字符串true或false")
 		}
 	}
-	skill := Skill{Name: name, TriggerText: metaString(m, "triggers"), SubjectText: metaString(m, "subject"), Description: body, Tools: []string{}, Enabled: enabled}
+	skill := Skill{Name: name, TriggerText: metaString(m, "triggers"), SubjectText: metaString(m, "subject"), Description: body, Tools: []string{}, ToolPolicy: metaString(m, "tool-policy"), Enabled: enabled}
 	if value := metaString(m, "tools"); value != "" {
 		skill.Tools = separators.Split(value, -1)
 	}
@@ -273,6 +277,7 @@ func PreviewSkill(input SkillImport) (SkillPreview, error) {
 		return SkillPreview{}, err
 	}
 	skill.Tools = checked.Tools
+	skill.ToolPolicy = checked.ToolPolicy
 	skill.SourceText, err = renderPortable(fields, skill)
 	if err != nil {
 		return SkillPreview{}, err

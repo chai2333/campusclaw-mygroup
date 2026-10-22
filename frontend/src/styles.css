@@ -1989,7 +1989,7 @@ a:hover {
 .config-grid {display:grid;grid-template-columns:280px minmax(0,1fr);gap:24px;align-items:start;}
 .config-list,.config-editor {display:flex;flex-direction:column;gap:12px;min-width:0;}
 .config-editor {padding:20px;border:1px solid var(--border);border-radius:12px;}
-.config-editor input:not([type=checkbox]),.config-editor textarea,.agent-picker select {width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;min-width:0;}
+.config-editor input:not([type=checkbox]),.config-editor textarea,.config-editor select,.agent-picker select {width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;min-width:0;}
 .config-editor textarea {resize:vertical;}
 .config-editor fieldset {border:1px solid var(--border);border-radius:8px;padding:14px;min-width:0;}
 .config-editor legend {font-weight:600;}
@@ -2002,6 +2002,8 @@ a:hover {
 .agent-picker {padding:12px;display:flex;flex-direction:column;gap:8px;}
 .agent-context {padding:0 16px;}
 .msg-skill {font-size:.8rem;font-weight:600;margin:0 0 8px;}
+.skill-tool-option {margin:12px 0;}
+.skill-tool-option .config-hint {margin:4px 0 12px 24px;overflow-wrap:anywhere;}
 .skill-preview-body {white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem;max-height:360px;overflow-y:auto;}
 @media(max-width:700px){.config-grid{grid-template-columns:minmax(0,1fr);}.config-page{padding:16px;}.config-list{max-height:260px;overflow-y:auto;}.config-editor{padding:14px;}}
 

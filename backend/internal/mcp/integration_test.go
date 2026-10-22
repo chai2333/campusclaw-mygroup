@@ -212,6 +212,12 @@ func (p *planner) Stream(context.Context, dialogue.Request, func(string) error) 
 func (p *planner) Decide(_ context.Context, r dialogue.Request) (dialogue.Decision, error) {
 	p.requests = append(p.requests, r)
 	p.rounds++
+	if p.mode == "empty" {
+		return dialogue.Decision{}, nil
+	}
+	if p.mode == "error" {
+		return dialogue.Decision{}, dialogue.ErrUnavailable
+	}
 	if p.mode != "loop" && p.rounds > 2 {
 		return dialogue.Decision{}, nil
 	}
@@ -327,5 +333,68 @@ func TestToolCancellationRetainsAudit(t *testing.T) {
 	var count int
 	if e := s.DB.QueryRow("SELECT COUNT(*) FROM mcp_tool_calls WHERE class_id=? AND status='error'", a.ClassID).Scan(&count); e != nil || count != 1 {
 		t.Fatalf("cancelled action lost audit: %d %v", count, e)
+	}
+}
+
+func TestRequiredToolPolicy(t *testing.T) {
+	for _, mode := range []string{"normal", "empty", "error"} {
+		t.Run(mode, func(t *testing.T) {
+			s, f, a, _ := setup(t)
+			p := &planner{mode: mode}
+			req := dialogue.Request{ToolChoice: "required", Messages: []dialogue.Message{{Role: "user", Content: "速度每小时3公里，运动2分钟，给我提示"}}}
+			final, calls, err := s.Prepare(context.Background(), p, req, a, []string{"formula_hint@campus-tools"}, nil)
+			if err != nil || len(calls) == 0 {
+				t.Fatalf("mandatory result: %+v %v", calls, err)
+			}
+			if p.requests[0].ToolChoice != "required" || final.ToolChoice != "" || len(final.Tools) != 0 {
+				t.Fatal("required choice leaked or not sent")
+			}
+			for _, r := range p.requests[1:] {
+				if r.ToolChoice != "" {
+					t.Fatal("mandatory choice repeated")
+				}
+			}
+			if mode == "normal" {
+				if calls[0].Status != "ok" || f.calls == 0 {
+					t.Fatal("tool did not execute")
+				}
+			} else {
+				if f.calls != 0 || calls[0].Status != "denied" || !strings.Contains(calls[0].Text, "必须调用未完成") {
+					t.Fatalf("silent fallback: %+v", calls)
+				}
+			}
+		})
+	}
+}
+
+func TestSkillPolicyPersistence(t *testing.T) {
+	s, _, a, _ := setup(t)
+	ctx := context.Background()
+	manager := &tutor.Service{DB: s.DB}
+	source := "名称：必须工具提示\n适用条件：速度\n工具：formula_hint@campus-tools\n工具策略：required\n启用：是\n\n给下一步提示。"
+	skill, err := tutor.ParseSkill(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved, err := manager.SaveSkill(ctx, a.ClassID, 0, skill)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := manager.Skill(ctx, a.ClassID, saved.ID)
+	if err != nil || loaded.ToolPolicy != "required" {
+		t.Fatalf("policy reload: %+v %v", loaded, err)
+	}
+}
+
+type streamOnly struct{}
+
+func (streamOnly) Stream(context.Context, dialogue.Request, func(string) error) (string, error) {
+	return "", nil
+}
+func TestRequiredWithoutPlannerIsVisible(t *testing.T) {
+	s, f, a, _ := setup(t)
+	final, calls, err := s.Prepare(context.Background(), streamOnly{}, dialogue.Request{ToolChoice: "required"}, a, []string{"formula_hint@campus-tools"}, nil)
+	if err != nil || len(calls) != 1 || calls[0].Status != "denied" || f.calls != 0 || final.ToolChoice != "" || !strings.Contains(calls[0].Text, "网关不支持") {
+		t.Fatalf("silent missing planner: %+v %v", calls, err)
 	}
 }

@@ -445,13 +445,13 @@ export function saveSkill(enabled: boolean): Promise<SkillState> {
 
 export interface TutorAgent { id:number; name:string; prompt:string; enabled:boolean; version:number; skill_ids:number[]; material_ids:string[]; }
 export interface TutorAgentInput {name:string;prompt:string;enabled:boolean;skill_ids:number[];material_ids:string[];}
-export interface TutorSkill {id:number;name:string;trigger_text:string;subject_text:string;description:string;tools:string[];source_text:string;enabled:boolean;}
+export interface TutorSkill {id:number;name:string;trigger_text:string;subject_text:string;description:string;tools:string[];tool_policy:'auto'|'required';source_text:string;enabled:boolean;}
 export const fetchAgents=():Promise<TutorAgent[]>=>request<{agents:TutorAgent[]}>('/api/agents').then(x=>x.agents);
 export const saveAgent=(input:TutorAgentInput,id?:number):Promise<TutorAgent>=>request<TutorAgent>(id?`/api/agents/${id}`:'/api/agents',{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});
 export const fetchSkills=():Promise<TutorSkill[]>=>request<{skills:TutorSkill[]}>('/api/skills').then(x=>x.skills);
 export const saveSkillFile=(sourceText:string,id?:number):Promise<TutorSkill>=>request<TutorSkill>(id?`/api/skills/${id}`:'/api/skills',{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source_text:sourceText})});
 export const deleteSkill=(id:number):Promise<{status:string}>=>request(`/api/skills/${id}`,{method:'DELETE'});
-export interface SkillImport { source_text:string; name?:string; trigger_text?:string; subject_text?:string; tools?:string[]; enabled?:boolean; }
+export interface SkillImport { source_text:string; name?:string; trigger_text?:string; subject_text?:string; tools?:string[]; tool_policy?:'auto'|'required'; enabled?:boolean; }
 export interface SkillPreview { format:'course'|'agent-skills'; skill:TutorSkill; warnings:string[]; ready:boolean; }
 export interface SkillExport { filename:string; directory:string; source_text:string; warnings:string[]; }
 export const previewSkill=(input:SkillImport):Promise<SkillPreview>=>request('/api/skills/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});

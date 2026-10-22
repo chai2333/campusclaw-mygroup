@@ -1083,6 +1083,14 @@
             "maxLength": 32,
             "type": "string"
           },
+          "tool_policy": {
+            "description": "auto由模型按需调用；required首轮至少请求一个已绑定MCP工具，失败会记录原因",
+            "enum": [
+              "auto",
+              "required"
+            ],
+            "type": "string"
+          },
           "tools": {
             "items": {
               "pattern": "^(knowledge_search|[a-z][a-z0-9_]{0,47}@[a-z][a-z0-9_-]{0,47})$",
@@ -1104,7 +1112,8 @@
           "description",
           "tools",
           "source_text",
-          "enabled"
+          "enabled",
+          "tool_policy"
         ],
         "type": "object"
       },
@@ -1135,6 +1144,14 @@
             "maxLength": 32,
             "type": "string"
           },
+          "tool_policy": {
+            "description": "auto由模型按需调用；required首轮至少请求一个已绑定MCP工具，失败会记录原因",
+            "enum": [
+              "auto",
+              "required"
+            ],
+            "type": "string"
+          },
           "tools": {
             "items": {
               "pattern": "^(knowledge_search|[a-z][a-z0-9_]{0,47}@[a-z][a-z0-9_-]{0,47})$",
@@ -1156,7 +1173,8 @@
           "description",
           "tools",
           "source_text",
-          "enabled"
+          "enabled",
+          "tool_policy"
         ],
         "type": "object"
       },
@@ -1214,6 +1232,14 @@
           },
           "subject_text": {
             "maxLength": 32,
+            "type": "string"
+          },
+          "tool_policy": {
+            "description": "auto由模型按需调用；required首轮至少请求一个已绑定MCP工具，失败会记录原因",
+            "enum": [
+              "auto",
+              "required"
+            ],
             "type": "string"
           },
           "tools": {

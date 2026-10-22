@@ -14,6 +14,8 @@ docker compose up --build -d
 
 服务监听 `http://localhost:${WEB_PORT:-8080}`。
 
+初始化提供“默认学习助手”“数学学习助手”“语文阅读助手”三个独立应用；数学/语文应用分别绑定相应内置技能，资料范围由教师另行设置。再次启动保留教师修改及已移除的绑定。
+
 预置账号：`a-teacher`、`a-student`、`b-teacher`、`b-student`。密码来自 `.env` 中的 `SEED_TEACHER_PASSWORD` 和 `SEED_STUDENT_PASSWORD`。
 
 ## 配置
@@ -286,7 +288,7 @@ docker compose --project-name campusclaw-lesson5-apitest \
 教师登录后打开 `/mcp`（导航“MCP 工具”）：
 
 1. 登记 `campus-tools`，Base URL填 `http://mcp-demo:8090`，勾选使用本机环境令牌，保存后点击“连接并发现”。能看到两个工具的完整说明、输入结构与确认状态。
-2. 在“智能体与技能”的技能文件中添加 `工具：formula_hint@campus-tools,unit_convert@campus-tools`，例如适用条件为“单位,路程,匀速”；先连接再保存，否则返回可读400。把技能绑定到智能体。
+2. 在“智能体与技能 → 技能文件”选择技能，直接勾选“公式提示”“单位换算提示”，无需手写工具引用。选择“自动判断”由模型按需调用，或“必须调用”要求首轮至少请求一个所选MCP工具（不保证全部调用或执行成功）。例如适用条件为“单位,路程,匀速”，保存并绑定智能体。先连接再保存，否则返回可读400。接口不支持工具决策或忽略必须调用时会显示拒绝原因。
 3. 学生选择该智能体新建会话，提问“速度每小时3公里，运动2分钟；先提示怎样统一单位，再提示路程公式，不直接算结果”。由模型决定工具与参数，宿主按发现的Schema校验后带令牌执行，结果以tool消息回传，不进入system提示。
 4. 对话首字前显示工具引用、轮次及成功/被拒/出错。教师在MCP管理页查看本班倒序调用记录，含用户、会话、消息、时间、轮次和摘要。刷新聊天保留调用快照。
 5. 断开会清空工具清单；已有技能下一轮会明确显示denied并留下拒绝记录，仍继续回答。删除/改名后的失效引用也在会话显示denied，但不伪造服务器归属。连接失败不阻断旧检索/聊天路径。
@@ -320,3 +322,7 @@ docker compose --project-name campusclaw-lesson5-apitest --env-file apitest/repo
 ```
 
 小上限验收：给同一个独立项目额外加 `-f compose.apitest.limits.yaml`，仅 `up -d --no-deps api`，然后运行上述脚本并加 `--limits`。验收后去掉limits覆盖文件重新启动api，恢复默认配额。该覆盖只用于独立测试环境，不用于主应用。真实样例结果分别保存到忽略目录的 `week6-real-model.json`（两轮、错误、注入、断开4项）和 `week6-real-limits.json`（1次成功后会话配额拒绝2项）。不要在后端数据库测试执行期间用 `--force-recreate db` 重建同一独立项目。
+
+## 阶段性验收
+
+[验收报告正文](docs/stage-acceptance.md)逐项解释提示词、检索、Skill与MCP的实际LLM参数，附无凭据测试请求/返回快照与复现方式。本次报告不生成PDF。

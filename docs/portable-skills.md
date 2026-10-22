@@ -26,7 +26,7 @@ english-writing-review/
 1. 获取作者提供的UTF-8 `SKILL.md`，保留其中的许可证和来源元数据。
 2. 读取文件会开启一个新草稿，不覆盖当前选中的技能。也可粘贴原文后点“解析预览 / 设置适用条件”。
 3. 检查原始头部、完整正文和依赖提示，设置本应用显示名与适用关键词。普通外部文件默认停用，缺关键词可以预览但不能保存；确认要使用时勾选启用。
-4. 必要时配置本班MCP工具引用，保存后再绑定智能体。外部`allowed-tools`只保留供查看，不自动授予本应用权限。
+4. 必要时勾选本班已连接、发现并确认的MCP工具，选择自动判断或必须调用策略，保存后再绑定智能体。外部`allowed-tools`只保留供查看，不自动授予本应用权限。
 
 本次支持自包含的提示词技能单文件交换，不安装ZIP，不上传辅助目录，不执行Shell/Python等脚本。含`references/`、`scripts/`、`assets/`或其他本地文件依赖的技能会显示适配提示；应将必要参考文字合并进正文，或把实际功能封装为经过本班校验的MCP工具。文件兼容不代表其他agent的运行环境、工具能力也已搬入应用。
 
@@ -36,8 +36,10 @@ english-writing-review/
 - 本应用显示名1–32字，关键词1–120字，资料筛选最多32字，每技能最多16个工具。
 - 标准name为1–64个小写字母、数字或连字符，不能首尾或连续使用连字符；description为1–1024字符。长标准name可配置较短显示名，导出保留原name。
 - YAML拒绝别名、锚点、重复键、自定义标签与过深结构。保留许可证、工具声明和未知元数据的语义，重新序列化可能调整排版或移除YAML注释。
-- `POST /api/skills/preview`：教师Bearer，JSON `source_text`及可选`name/trigger_text/subject_text/tools/enabled`，返回格式、解析技能、警告与`ready`；不写数据库。
+- `POST /api/skills/preview`：教师Bearer，JSON `source_text`及可选`name/trigger_text/subject_text/tools/tool_policy/enabled`，返回格式、解析技能、警告与`ready`；不写数据库。
 - `GET /api/skills/{id}/export`：教师Bearer，返回`filename/directory/source_text/warnings`。跨班与不存在均404，学生403，未登录401。
 - 保存仍使用`POST /api/skills`与`PUT /api/skills/{id}`，保存时重新校验本班MCP引用；预览成功不代表该工具已获授权。
 
 格式参考：[Agent Skills规范](https://agentskills.io/specification)、[OpenAI技能说明](https://learn.chatgpt.com/docs/build-skills)。当前应用使用本地关键词路由，未改为由模型读取description做语义路由。
+
+工具策略 `tool_policy` 默认为 `auto`，`required` 要求首轮至少请求一个已绑定MCP工具，必须至少绑定一项MCP引用。课程格式保存为 `工具策略：auto|required`；标准格式保存为字符串元数据 `campusclaw-tool-policy`。旧文件继续默认自动判断。此策略不自动授予外部工具权限，也不保证全部勾选工具被调用。

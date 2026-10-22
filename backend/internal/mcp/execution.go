@@ -120,6 +120,9 @@ func (s *Service) execute(ctx context.Context, a Actor, ref, args string, round 
 // Prepare runs only skill-bound native tool decisions. All failures become
 // data, and the final Request contains no tools, guaranteeing termination.
 func (s *Service) Prepare(ctx context.Context, gateway dialogue.Gateway, req dialogue.Request, a Actor, refs []string, onCalls func([]Call) error) (dialogue.Request, []Call, error) {
+	required := req.ToolChoice == "required"
+	// Final generation never carries a tool policy, including all early returns.
+	req.ToolChoice = ""
 	calls := []Call{}
 	candidates := map[string]Candidate{}
 	tools := []dialogue.Tool{}
@@ -150,7 +153,20 @@ func (s *Service) Prepare(ctx context.Context, gateway dialogue.Gateway, req dia
 		tools = append(tools, dialogue.Tool{Type: "function", Function: dialogue.Function{Name: c.Alias, Description: c.Tool.Description, Parameters: c.Tool.InputSchema}})
 	}
 	planner, ok := gateway.(dialogue.Planner)
-	if len(tools) == 0 || !ok {
+	if len(tools) == 0 {
+		return req, calls, nil
+	}
+	if !ok {
+		if required {
+			call, e := s.execute(ctx, a, candidates[tools[0].Function.Name].Ref, "{}", 0, "必须调用未完成：当前模型网关不支持工具决策")
+			if e != nil {
+				return req, calls, e
+			}
+			if e = emit(call); e != nil {
+				return req, calls, e
+			}
+			req.Messages = append(req.Messages, dialogue.Message{Role: "user", Content: "[工具状态] " + call.Text})
+		}
 		return req, calls, nil
 	}
 	rounds, turnLimit, totalLimit := s.MaxRounds, s.MaxTurnCalls, s.MaxConversationCalls
@@ -185,12 +201,37 @@ func (s *Service) Prepare(ctx context.Context, gateway dialogue.Gateway, req dia
 			return req, calls, err
 		}
 		req.Tools = tools
+		if required && round == 1 {
+			req.ToolChoice = "required"
+		} else {
+			req.ToolChoice = ""
+		}
 		decision, err := planner.Decide(ctx, req)
+		req.ToolChoice = ""
 		if err != nil {
+			if required && round == 1 {
+				call, e := s.execute(ctx, a, candidates[tools[0].Function.Name].Ref, "{}", round, "必须调用未完成：模型工具决策失败，请检查接口是否支持tool_choice=required")
+				if e != nil {
+					return req, calls, e
+				}
+				if e = emit(call); e != nil {
+					return req, calls, e
+				}
+			}
 			req.Messages = append(req.Messages, dialogue.Message{Role: "user", Content: "[工具决策状态] 暂不可用，请使用已有资料继续回答，不要编造工具结果。"})
 			break
 		}
 		if len(decision.Calls) == 0 {
+			if required && round == 1 {
+				call, e := s.execute(ctx, a, candidates[tools[0].Function.Name].Ref, "{}", round, "必须调用未完成：模型未返回工具调用，请检查接口是否支持tool_choice=required")
+				if e != nil {
+					return req, calls, e
+				}
+				if e = emit(call); e != nil {
+					return req, calls, e
+				}
+				req.Messages = append(req.Messages, dialogue.Message{Role: "user", Content: "[工具状态] " + call.Text})
+			}
 			break
 		}
 		req.Messages = append(req.Messages, dialogue.Message{Role: "assistant", Content: decision.Content, ToolCalls: decision.Calls})

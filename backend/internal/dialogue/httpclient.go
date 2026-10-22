@@ -26,11 +26,12 @@ type HTTPGateway struct {
 }
 
 type chatRequest struct {
-	Model     string        `json:"model"`
-	Stream    bool          `json:"stream"`
-	MaxTokens int           `json:"max_tokens,omitempty"`
-	Messages  []chatMessage `json:"messages"`
-	Tools     []Tool        `json:"tools,omitempty"`
+	Model      string        `json:"model"`
+	Stream     bool          `json:"stream"`
+	MaxTokens  int           `json:"max_tokens,omitempty"`
+	Messages   []chatMessage `json:"messages"`
+	Tools      []Tool        `json:"tools,omitempty"`
+	ToolChoice string        `json:"tool_choice,omitempty"`
 }
 
 type chatMessage = Message

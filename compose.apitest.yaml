@@ -29,6 +29,8 @@ services:
   model:
     image: python:3.12-slim
     command: ["python", "/mock_model.py"]
+    environment:
+      APITEST_CAPTURE_LLM: "1"
     volumes:
       - ./apitest/mock_model.py:/mock_model.py:ro
   qdrant:

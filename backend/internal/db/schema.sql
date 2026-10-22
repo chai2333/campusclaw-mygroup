@@ -106,6 +106,7 @@ CREATE TABLE IF NOT EXISTS skills (
  subject_text VARCHAR(32) NOT NULL DEFAULT '',
  description TEXT NOT NULL,
  tools_json JSON NOT NULL,
+ tool_policy VARCHAR(16) NOT NULL DEFAULT 'auto',
  source_text TEXT NOT NULL,
  enabled TINYINT(1) NOT NULL DEFAULT 1,
  seed_key VARCHAR(64) NULL,

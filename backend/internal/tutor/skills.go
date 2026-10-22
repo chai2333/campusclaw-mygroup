@@ -16,6 +16,7 @@ type Skill struct {
 	SubjectText string   `json:"subject_text"`
 	Description string   `json:"description"`
 	Tools       []string `json:"tools"`
+	ToolPolicy  string   `json:"tool_policy"`
 	SourceText  string   `json:"source_text"`
 	Enabled     bool     `json:"enabled"`
 }
@@ -40,7 +41,7 @@ func ParseSkill(source string) (Skill, error) {
 }
 
 func parseCourseSkill(source string) (Skill, error) {
-	s := Skill{SourceText: source, Tools: []string{}}
+	s := Skill{SourceText: source, Tools: []string{}, ToolPolicy: "auto"}
 	normalized := strings.ReplaceAll(strings.TrimPrefix(source, "\ufeff"), "\r\n", "\n")
 	fields := map[string]string{}
 	var body []string
@@ -68,7 +69,7 @@ func parseCourseSkill(source string) (Skill, error) {
 		key = strings.TrimSpace(key)
 		value = strings.TrimSpace(value)
 		switch key {
-		case "名称", "适用条件", "资料", "工具", "启用":
+		case "名称", "适用条件", "资料", "工具", "工具策略", "启用":
 		default:
 			return s, errors.New("未定义的技能字段：" + key)
 		}
@@ -119,6 +120,23 @@ func parseCourseSkill(source string) (Skill, error) {
 			if !exists {
 				s.Tools = append(s.Tools, tool)
 			}
+		}
+	}
+	switch fields["工具策略"] {
+	case "", "auto":
+		s.ToolPolicy = "auto"
+	case "required":
+		s.ToolPolicy = "required"
+	default:
+		return s, errors.New("工具策略只接受auto或required")
+	}
+	if s.ToolPolicy == "required" {
+		hasMCP := false
+		for _, tool := range s.Tools {
+			hasMCP = hasMCP || tool != "knowledge_search"
+		}
+		if !hasMCP {
+			return s, errors.New("必须调用策略至少需要勾选一个MCP工具")
 		}
 	}
 	if len(s.Tools) > 16 {

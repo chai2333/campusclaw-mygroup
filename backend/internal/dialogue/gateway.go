@@ -43,10 +43,11 @@ type Planner interface {
 
 // Request is one completion call. Implementations must not mutate it.
 type Request struct {
-	Model     string
-	Messages  []Message
-	MaxTokens int
-	Tools     []Tool
+	Model      string
+	Messages   []Message
+	MaxTokens  int
+	Tools      []Tool
+	ToolChoice string // "required" only for the first mandatory tool decision; empty is automatic.
 }
 
 // Errors reported by gateway implementations. The orchestrator maps them to

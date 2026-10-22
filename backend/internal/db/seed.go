@@ -107,7 +107,10 @@ func Seed(ctx context.Context, conn *sql.DB, teacherPassword, studentPassword, u
 	if err := seedSkillRows(ctx, conn); err != nil {
 		return err
 	}
-	return seedAgents(ctx, conn)
+	if err := seedAgents(ctx, conn); err != nil {
+		return err
+	}
+	return seedBuiltinAgents(ctx, conn)
 }
 
 func ensureSeedBody(ctx context.Context, conn *sql.DB, m seedMaterial, classID int64) error {

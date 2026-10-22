@@ -112,3 +112,40 @@ func TestPortablePreservesLongBodyAndName(t *testing.T) {
 		t.Fatal("portable name truncated")
 	}
 }
+
+func TestToolPolicyRoundTripAndValidation(t *testing.T) {
+	source := "名称：工具提示\n适用条件：速度\n工具：formula_hint@campus-tools\n启用：是\n\n请给下一步提示。"
+	skill, err := ParseSkill(source)
+	if err != nil || skill.ToolPolicy != "auto" {
+		t.Fatalf("legacy default: %+v %v", skill, err)
+	}
+	required := "required"
+	preview, err := PreviewSkill(SkillImport{SourceText: source, ToolPolicy: &required})
+	if err != nil || preview.Skill.ToolPolicy != required {
+		t.Fatalf("policy override: %+v %v", preview, err)
+	}
+	file, err := ExportSkill(preview.Skill)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := ParseSkill(file.SourceText)
+	if err != nil || got.ToolPolicy != required || !strings.Contains(file.SourceText, "campusclaw-tool-policy: required") {
+		t.Fatalf("policy export/import: %+v %v", got, err)
+	}
+	auto := "auto"
+	changed, err := PreviewSkill(SkillImport{SourceText: file.SourceText, ToolPolicy: &auto})
+	if err != nil || changed.Skill.ToolPolicy != auto {
+		t.Fatalf("portable override: %+v %v", changed, err)
+	}
+	for _, policy := range []string{"always", "required\n启用：是"} {
+		if _, err := PreviewSkill(SkillImport{SourceText: source, ToolPolicy: &policy}); err == nil {
+			t.Fatal("invalid policy accepted", policy)
+		}
+	}
+	for _, raw := range []string{source, file.SourceText} {
+		empty := []string{"knowledge_search"}
+		if _, err := PreviewSkill(SkillImport{SourceText: raw, ToolPolicy: &required, Tools: &empty}); err == nil {
+			t.Fatal("required without MCP accepted")
+		}
+	}
+}

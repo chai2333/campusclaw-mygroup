@@ -89,7 +89,7 @@ func LoadAgent(ctx context.Context, q Querier, classID, id int64) (Agent, error)
 }
 
 func BoundSkills(ctx context.Context, q Querier, classID, agentID int64) ([]Skill, error) {
-	return loadSkills(ctx, q, `SELECT s.id,s.name,s.trigger_text,s.subject_text,s.description,s.tools_json,s.source_text,s.enabled FROM skills s JOIN tutor_agent_skills b ON b.skill_id=s.id AND b.class_id=s.class_id WHERE b.agent_id=? AND s.class_id=? AND s.enabled=1 ORDER BY s.id`, agentID, classID)
+	return loadSkills(ctx, q, `SELECT s.id,s.name,s.trigger_text,s.subject_text,s.description,s.tools_json,s.source_text,s.enabled,s.tool_policy FROM skills s JOIN tutor_agent_skills b ON b.skill_id=s.id AND b.class_id=s.class_id WHERE b.agent_id=? AND s.class_id=? AND s.enabled=1 ORDER BY s.id`, agentID, classID)
 }
 
 func loadSkills(ctx context.Context, q Querier, query string, args ...any) ([]Skill, error) {
@@ -102,7 +102,7 @@ func loadSkills(ctx context.Context, q Querier, query string, args ...any) ([]Sk
 	for rows.Next() {
 		var s Skill
 		var raw string
-		if err = rows.Scan(&s.ID, &s.Name, &s.TriggerText, &s.SubjectText, &s.Description, &raw, &s.SourceText, &s.Enabled); err != nil {
+		if err = rows.Scan(&s.ID, &s.Name, &s.TriggerText, &s.SubjectText, &s.Description, &raw, &s.SourceText, &s.Enabled, &s.ToolPolicy); err != nil {
 			return nil, err
 		}
 		s.Tools = decodeTools(raw)
@@ -242,10 +242,10 @@ func classify(err error) error {
 }
 
 func (s *Service) ListSkills(ctx context.Context, classID int64) ([]Skill, error) {
-	return loadSkills(ctx, s.DB, "SELECT id,name,trigger_text,subject_text,description,tools_json,source_text,enabled FROM skills WHERE class_id=? ORDER BY id", classID)
+	return loadSkills(ctx, s.DB, "SELECT id,name,trigger_text,subject_text,description,tools_json,source_text,enabled,tool_policy FROM skills WHERE class_id=? ORDER BY id", classID)
 }
 func (s *Service) Skill(ctx context.Context, classID, id int64) (Skill, error) {
-	list, err := loadSkills(ctx, s.DB, "SELECT id,name,trigger_text,subject_text,description,tools_json,source_text,enabled FROM skills WHERE class_id=? AND id=?", classID, id)
+	list, err := loadSkills(ctx, s.DB, "SELECT id,name,trigger_text,subject_text,description,tools_json,source_text,enabled,tool_policy FROM skills WHERE class_id=? AND id=?", classID, id)
 	if err != nil {
 		return Skill{}, err
 	}
@@ -255,6 +255,12 @@ func (s *Service) Skill(ctx context.Context, classID, id int64) (Skill, error) {
 	return list[0], nil
 }
 func (s *Service) SaveSkill(ctx context.Context, classID, id int64, skill Skill) (Skill, error) {
+	if skill.ToolPolicy == "" {
+		skill.ToolPolicy = "auto"
+	}
+	if _, err := parseCourseSkill(courseSource(skill)); err != nil {
+		return Skill{}, mcp.InputError(err.Error())
+	}
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return Skill{}, err
@@ -276,12 +282,12 @@ func (s *Service) SaveSkill(ctx context.Context, classID, id int64, skill Skill)
 	tools, _ := json.Marshal(skill.Tools)
 	if id == 0 {
 		var res sql.Result
-		res, err = tx.ExecContext(ctx, "INSERT INTO skills(class_id,name,trigger_text,subject_text,description,tools_json,source_text,enabled) VALUES(?,?,?,?,?,?,?,?)", classID, skill.Name, skill.TriggerText, skill.SubjectText, skill.Description, string(tools), skill.SourceText, skill.Enabled)
+		res, err = tx.ExecContext(ctx, "INSERT INTO skills(class_id,name,trigger_text,subject_text,description,tools_json,source_text,enabled,tool_policy) VALUES(?,?,?,?,?,?,?,?,?)", classID, skill.Name, skill.TriggerText, skill.SubjectText, skill.Description, string(tools), skill.SourceText, skill.Enabled, skill.ToolPolicy)
 		if err == nil {
 			id, err = res.LastInsertId()
 		}
 	} else {
-		_, err = tx.ExecContext(ctx, "UPDATE skills SET name=?,trigger_text=?,subject_text=?,description=?,tools_json=?,source_text=?,enabled=? WHERE id=? AND class_id=?", skill.Name, skill.TriggerText, skill.SubjectText, skill.Description, string(tools), skill.SourceText, skill.Enabled, id, classID)
+		_, err = tx.ExecContext(ctx, "UPDATE skills SET name=?,trigger_text=?,subject_text=?,description=?,tools_json=?,source_text=?,enabled=?,tool_policy=? WHERE id=? AND class_id=?", skill.Name, skill.TriggerText, skill.SubjectText, skill.Description, string(tools), skill.SourceText, skill.Enabled, skill.ToolPolicy, id, classID)
 	}
 	if err != nil {
 		return Skill{}, classify(err)

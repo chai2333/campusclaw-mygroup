@@ -3,6 +3,21 @@
 import json
 import re
 import time
+import os
+import threading
+from collections import deque
+
+TRACES = deque(maxlen=100)
+TRACE_LOCK = threading.Lock()
+TRACE_ID = 0
+CAPTURE = os.environ.get("APITEST_CAPTURE_LLM") == "1"
+
+def capture(request, response):
+    global TRACE_ID
+    if CAPTURE:
+        with TRACE_LOCK:
+            TRACE_ID += 1
+            TRACES.append({"id": TRACE_ID, "request": request, "response": response})
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
@@ -11,6 +26,14 @@ class Handler(BaseHTTPRequestHandler):
         pass  # Never log request payloads or Authorization.
 
     def do_GET(self):
+        if CAPTURE and self.path == "/test/llm-traces":
+            with TRACE_LOCK:
+                raw = json.dumps(list(TRACES), ensure_ascii=False).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(raw)
+            return
         self.send_response(200 if self.path == "/health" else 404)
         self.end_headers()
 
@@ -54,7 +77,7 @@ class Handler(BaseHTTPRequestHandler):
             repeat = "MCP_LOOP" in question
             required = 2 if "MCP_TWO_STEP" in question else 1
             calls = []
-            if available and (repeat or len(tool_messages) < required):
+            if available and (repeat or len(tool_messages) < required) and ("MCP_SKIP" not in question or payload.get("tool_choice") == "required"):
                 suffix = "unit_convert" if required == 2 and not tool_messages else "formula_hint"
                 chosen = next(
                     (t for t in available if t["function"]["name"].endswith(suffix)), available[0]
@@ -85,15 +108,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(
-                json.dumps(
-                    {
-                        "choices": [
-                            {"message": {"role": "assistant", "content": "", "tool_calls": calls}}
-                        ]
-                    }
-                ).encode()
-            )
+            response = {"choices": [{"message": {"role": "assistant", "content": "", "tool_calls": calls}}]}
+            capture(payload, {"status": 200, "body": response})
+            self.wfile.write(json.dumps(response, ensure_ascii=False).encode())
             return
         system = messages[0]["content"]
         question = next(
@@ -151,10 +168,11 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
+        chunks = [{"choices": [{"delta": {"content": text[i : i + 9]}}]} for i in range(0, len(text), 9)]
+        capture(payload, {"status": 200, "content_type": "text/event-stream", "chunks": chunks, "end": "[DONE]", "assembled_text": text})
         try:
-            for i in range(0, len(text), 9):
+            for data in chunks:
                 time.sleep(0.12 if current.startswith("MOCK_SLOW") else 0.025)
-                data = {"choices": [{"delta": {"content": text[i : i + 9]}}]}
                 self.wfile.write(
                     ("data: " + json.dumps(data, ensure_ascii=False) + "\n\n").encode()
                 )

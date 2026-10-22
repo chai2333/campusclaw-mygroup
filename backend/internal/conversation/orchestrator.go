@@ -157,6 +157,9 @@ func (o *Orchestrator) Run(ctx context.Context, svc *Service, conversationID str
 	genCtx, cancel := context.WithTimeout(ctx, o.Timeout)
 	defer cancel()
 	if o.MCP != nil && turn.Skill != nil {
+		if turn.Skill.ToolPolicy == "required" {
+			req.ToolChoice = "required"
+		}
 		req, turn.ToolCalls, err = o.MCP.Prepare(genCtx, o.Gateway, req, mcp.Actor{ClassID: classID, UserID: ownerID, ConversationID: turn.ConversationID, MessageID: turn.AssistantMessageID}, turn.Skill.Tools, func(calls []mcp.Call) error {
 			turn.ToolCalls = calls
 			persistCtx, persistCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)

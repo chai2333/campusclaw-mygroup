@@ -18,3 +18,5 @@
 
 
 第6课新增10个MCP接口脚本（总计41个）。独立Compose实际启动mcp-demo，覆盖独立协议、登记/修改、握手缓存替换、技能保存校验、模型两轮调用、参数错误/注入/上限、断开/删除后的denied及审计数据库一致性。完整说明变更与重新确认另由真实MySQL/HTTP后端测试覆盖。真实模型模式不伪造固定决策，报告保留模型是否实际调用的验收结果。`mcp-server/test_server.py`可单独执行，不进入生产镜像。
+
+阶段验收可在模拟模型测试栈保留后运行 `accept_stage.py`（用 runner 的 `--entrypoint python`），核对四个场景的实际LLM请求、SSE响应与真实MCP执行。详见 [报告和复现命令](../docs/stage-acceptance.md)。捕获只在隔离model服务的 `APITEST_CAPTURE_LLM=1` 下启用，最多保留100条，不记录请求头；不应将该服务接入生产对话。
